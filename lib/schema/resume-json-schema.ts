@@ -1,0 +1,173 @@
+// Minimal JSON Schema used with OpenAI Responses API
+export const RESUME_JSON_SCHEMA = {
+  name: "resume_schema_v2",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      profile: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: ["string", "null"] },
+          surname: { type: ["string", "null"] },
+          email: { type: ["string", "null"] },
+          headline: { type: ["string", "null"] },
+          professionalSummary: { type: ["string", "null"] },
+          linkedIn: { type: ["string", "null"] },
+          website: { type: ["string", "null"] },
+          country: { type: ["string", "null"] },
+          city: { type: ["string", "null"] },
+          relocation: { type: ["boolean", "null"] },
+          remote: { type: ["boolean", "null"] },
+        },
+        required: [
+          "name",
+          "surname",
+          "email",
+          "headline",
+          "professionalSummary",
+          "linkedIn",
+          "website",
+          "country",
+          "city",
+          "relocation",
+          "remote",
+        ],
+      },
+      workExperiences: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            jobTitle: { type: ["string", "null"] },
+            employmentType: { type: ["string", "null"] },
+            locationType: { type: ["string", "null"] },
+            company: { type: ["string", "null"] },
+            startMonth: { type: ["integer", "null"] },
+            startYear: { type: ["integer", "null"] },
+            endMonth: { type: ["integer", "null"] },
+            endYear: { type: ["integer", "null"] },
+            current: { type: ["boolean", "null"] },
+            description: { type: ["string", "null"] },
+          },
+          required: [
+            "jobTitle",
+            "employmentType",
+            "locationType",
+            "company",
+            "startMonth",
+            "startYear",
+            "endMonth",
+            "endYear",
+            "current",
+            "description",
+          ],
+        },
+      },
+      educations: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            school: { type: ["string", "null"] },
+            degree: { type: ["string", "null"] },
+            major: { type: ["string", "null"] },
+            startYear: { type: ["integer", "null"] },
+            endYear: { type: ["integer", "null"] },
+            current: { type: ["boolean", "null"] },
+            description: { type: ["string", "null"] },
+          },
+          required: ["school", "degree", "major", "startYear", "endYear", "current", "description"],
+        },
+      },
+      skills: { type: "array", items: { type: "string" } },
+      licenses: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            name: { type: ["string", "null"] },
+            issuer: { type: ["string", "null"] },
+            issueYear: { type: ["integer", "null"] },
+            description: { type: ["string", "null"] },
+          },
+          required: ["name", "issuer", "issueYear", "description"],
+        },
+      },
+      languages: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            language: { type: ["string", "null"] },
+            level: { type: ["string", "null"] },
+          },
+          required: ["language", "level"],
+        },
+      },
+      achievements: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: ["string", "null"] },
+            organization: { type: ["string", "null"] },
+            achieveDate: { type: ["string", "null"] },
+            description: { type: ["string", "null"] },
+          },
+          required: ["title", "organization", "achieveDate", "description"],
+        },
+      },
+      publications: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: ["string", "null"] },
+            publisher: { type: ["string", "null"] },
+            publicationDate: { type: ["string", "null"] },
+            publicationUrl: { type: ["string", "null"] },
+            description: { type: ["string", "null"] },
+          },
+          required: ["title", "publisher", "publicationDate", "publicationUrl", "description"],
+        },
+      },
+      honors: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: ["string", "null"] },
+            issuer: { type: ["string", "null"] },
+            issueMonth: { type: ["integer", "null"] },
+            issueYear: { type: ["integer", "null"] },
+            description: { type: ["string", "null"] },
+          },
+          required: ["title", "issuer", "issueMonth", "issueYear", "description"],
+        },
+      },
+    },
+    required: [
+      "profile",
+      "workExperiences",
+      "educations",
+      "skills",
+      "licenses",
+      "languages",
+      "achievements",
+      "publications",
+      "honors",
+    ],
+  },
+  strict: true,
+} as const;
+
+

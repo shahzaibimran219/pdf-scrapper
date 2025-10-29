@@ -1,0 +1,174 @@
+Assignment Title: PDF Scraper App 
+Objective 
+Develop a production-ready Next.js application that allows users to upload and extract data from 
+PDF files using OpenAI. The application must handle different PDF types, store structured 
+results in a Supabase database, and present a clear, responsive interface. 
+
+
+Scope of Work 
+1. A functional Next.js web application with authentication and database integration. 
+2. Functionality to upload and process PDFs (text, image, and hybrid). 
+3. Data extraction using OpenAI and structured JSON storage in Supabase. 
+4. A dashboard displaying all uploaded files and their extracted content. 
+5. Proper error handling and smooth user experience.
+
+Technical Requirements 
+Authentication 
+Use NextAuth for user authentication. All application features (upload, history, and data 
+viewing) must be accessible only to authenticated users. 
+Database 
+Use Supabase + Prisma for the database layer. 
+Store the following data: 
+● User information (managed by NextAuth) 
+● Uploaded file metadata (fileName, uploadedAt) 
+● Extracted JSON data (resumeData) 
+● Complete upload history (resumeHistory table, required) 
+PDF Upload 
+● Accept PDF files up to 10 MB. 
+● Provide clear error messages for unsupported or oversized files. 
+● Note: Vercel server actions support payloads up to approximately 4 MB. Files larger than 
+this must be handled using an alternate method, which should be briefly explained in the 
+README. 
+● Extraction must use OpenAI. Since OpenAI supports only text-based PDFs directly, a 
+custom solution is required for image-based and hybrid PDFs.
+
+Data Extraction 
+The extracted data must be converted into a structured JSON format (defined below) and stored 
+under the logged-in user in the resumeData column. All previous uploads must appear in a 
+user history section.
+
+
+User Interface and Experience 
+● The design should remain simple, intuitive, and user-friendly. 
+● Include clear loading messages (e.g., “Uploading…”, “Extracting data…”) so the user 
+understands progress. 
+● Use TailwindCSS or a similar minimal styling library. 
+● Add toast notifications for all actions and feedback (success, warning, and error states).
+
+Error Handling 
+All errors must display clear, user-friendly toast notifications. Handle invalid file types, size limits, 
+OpenAI errors, and database issues gracefully.
+
+Evaluation Criteria 
+1. Code Quality: clarity, organization, and maintainability. 
+2. Architecture and Problem Solving: handling of file limits, storage, and extraction. 
+3. User Experience: simplicity, clarity, and responsiveness. 
+4. Reliability: effective error handling and stable operation.
+
+
+Appendix: Expected JSON Output Format 
+All extracted resume data must follow this schema. Enum fields should include the possible 
+values as comments. 
+JSON
+ { 
+"profile": { 
+"name": "John", 
+"surname": "Doe", 
+"email": "john.doe@email.com", 
+"headline": "Full Stack Developer", 
+"professionalSummary": "Experienced developer with a focus on 
+Next.js and TypeScript.", 
+"linkedIn": "https://linkedin.com/in/johndoe", 
+"website": "https://johndoe.dev", 
+"country": "Turkey", 
+"city": "Ankara", 
+"relocation": false, 
+    "remote": true 
+  }, 
+  "workExperiences": [ 
+    { 
+      "jobTitle": "Frontend Developer", 
+      "employmentType": "FULL_TIME", // ENUM: FULL_TIME, 
+PART_TIME, INTERNSHIP, CONTRACT 
+      "locationType": "REMOTE", // ENUM: ONSITE, REMOTE, HYBRID 
+      "company": "Undetectable AI", 
+      "startMonth": 2, 
+      "startYear": 2023, 
+      "endMonth": null, 
+      "endYear": null, 
+      "current": true, 
+      "description": "Worked on AI-driven text humanization 
+tools." 
+    } 
+  ], 
+  "educations": [ 
+    { 
+      "school": "Middle East Technical University", 
+      "degree": "BACHELOR", // ENUM: HIGH_SCHOOL, ASSOCIATE, 
+BACHELOR, MASTER, DOCTORATE 
+      "major": "Computer Engineering", 
+      "startYear": 2017, 
+      "endYear": 2021, 
+      "current": false, 
+      "description": "Graduated with honors." 
+    } 
+  ], 
+  "skills": ["JavaScript", "React", "Next.js", "TypeScript", 
+"Node.js"], 
+  "licenses": [ 
+    { 
+      "name": "AWS Certified Developer", 
+      "issuer": "Amazon Web Services", 
+      "issueYear": 2024, 
+      "description": "Associate level certificate." 
+    } 
+  ], 
+  "languages": [ 
+    { "language": "English", "level": "ADVANCED" }, // ENUM: 
+BEGINNER, INTERMEDIATE, ADVANCED, NATIVE 
+    { "language": "Turkish", "level": "NATIVE" } 
+  ], 
+  "achievements": [ 
+    { 
+      "title": "Built a Resume Parsing AI", 
+      "organization": "Undetectable AI", 
+      "achieveDate": "2024-06", 
+      "description": "Developed an AI model that extracts 
+structured resume data with 92% accuracy." 
+    }, 
+    { 
+      "title": "Open Source Contributor", 
+      "organization": "Next.js Community", 
+      "achieveDate": "2023-11", 
+      "description": "Contributed to Next.js 14 open router 
+improvements." 
+    } 
+  ], 
+  "publications": [ 
+    { 
+      "title": "Improving Resume Parsing with LLMs", 
+      "publisher": "Medium", 
+      "publicationDate": "2024-07-10T00:00:00.000Z", 
+      "publicationUrl": 
+"https://medium.com/@johndoe/improving-resume-parsing", 
+      "description": "A technical deep dive into LLM-based 
+document extraction." 
+    }, 
+    { 
+"title": "Next.js 14 Auth Strategies", 
+"publisher": "Dev.to", 
+"publicationDate": "2023-10-02T00:00:00.000Z", 
+"publicationUrl": "https://dev.to/johndoe/nextjs-14-auth", 
+"description": "Explained how to integrate Supabase Auth 
+with NextAuth in production." 
+} 
+], 
+"honors": [ 
+{ 
+"title": "Best Developer of the Year", 
+"issuer": "Undetectable AI", 
+"issueMonth": 12, 
+"issueYear": 2024, 
+"description": "Recognized for exceptional contributions to 
+the Smart Applier project." 
+}, 
+{ 
+"title": "Dean’s List", 
+"issuer": "METU", 
+"issueMonth": 6, 
+"issueYear": 2021, 
+"description": "Awarded for maintaining a GPA above 3.7 
+during final year." 
+} 
+] 
+}
