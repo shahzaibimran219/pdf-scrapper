@@ -6,6 +6,7 @@ import { EXTRACT_CONFIG } from "@/config/extract";
 import { ensurePdfAndSize } from "@/lib/file-checks";
 import { computeSourceHash } from "@/lib/hash";
 import { extractResumeWithOpenAI } from "@/lib/extractors/openai";
+import { prisma as prismaClient } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,15 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Optional billing pre-check
+  try {
+    if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLIC_KEY) {
+      const user = await prismaClient.user.findUnique({ where: { id: session.user.id }, select: { credits: true, scrapingFrozen: true } });
+      if (user?.scrapingFrozen) return NextResponse.json(errorEnvelope("BILLING_FROZEN", "Subscription inactive; please reactivate."), { status: 402 });
+      if ((user?.credits ?? 0) < 100) return NextResponse.json(errorEnvelope("INSUFFICIENT_CREDITS", "Not enough credits (100 required)."), { status: 402 });
+    }
+  } catch {}
+
   let resumeData: any;
   try {
     resumeData = await extractResumeWithOpenAI(bytes, file.name || "uploaded.pdf");
@@ -61,6 +71,14 @@ export async function POST(req: NextRequest) {
 
   await prisma.resume.update({ where: { id: resume.id }, data: { resumeData, lastProcessStatus: "SUCCEEDED" } });
   await prisma.resumeHistory.create({ data: { resumeId: resume.id, userId: session.user.id, schemaVersion: EXTRACT_CONFIG.SCHEMA_VERSION, snapshot: resumeData, notes: "Initial extraction (small-file, text-only)" } });
+
+  // Optional billing post-debit
+  try {
+    if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLIC_KEY) {
+      await prismaClient.creditLedger.create({ data: { userId: session.user.id, delta: -100, reason: "EXTRACTION_DEBIT", resumeId: resume.id } });
+      await prismaClient.user.update({ where: { id: session.user.id }, data: { credits: { decrement: 100 } } });
+    }
+  } catch {}
 
   return NextResponse.json({ resumeId: resume.id, resumeData });
 }
