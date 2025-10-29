@@ -20,6 +20,16 @@ model User {
   sessions      Session[]
   resumes       Resume[]
   resumeHistory ResumeHistory[]
+
+  // Billing & Credits (Stripe extension)
+  planType            PlanType   @default(FREE)
+  credits             Int        @default(0)
+  scrapingFrozen      Boolean    @default(false)
+  stripeCustomerId    String?
+  stripeSubscriptionId String?
+  stripePriceId       String?
+
+  creditLedger CreditLedger[]
 }
 
 model Account {
@@ -96,6 +106,44 @@ enum ResumeStatus {
   PENDING
   SUCCEEDED
   FAILED
+}
+
+// Stripe extension enums and tables
+enum PlanType {
+  FREE
+  BASIC
+  PRO
+}
+
+model CreditLedger {
+  id        String   @id @default(uuid())
+  userId    String
+  delta     Int
+  reason    CreditReason
+  resumeId  String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@unique([userId, reason, resumeId])
+}
+
+model BillingEventLog {
+  eventId         String   @id
+  type            String
+  payloadMinimal  Json
+  createdAt       DateTime @default(now())
+}
+
+enum CreditReason {
+  SUBSCRIPTION_GRANT
+  EXTRACTION_DEBIT
+  PLAN_CHANGE
+  MANUAL_ADJUST
+  REFUND
+  CORRECTION
 }
 
 
