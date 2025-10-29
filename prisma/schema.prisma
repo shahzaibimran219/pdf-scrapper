@@ -28,6 +28,7 @@ model User {
   stripeCustomerId    String?
   stripeSubscriptionId String?
   stripePriceId       String?
+  metadata            Json?
 
   creditLedger CreditLedger[]
 }

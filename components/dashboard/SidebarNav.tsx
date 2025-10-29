@@ -2,11 +2,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Upload, History, LogOut } from "lucide-react";
+import { Upload, History, LogOut, Settings } from "lucide-react";
 
 const items = [
   { href: "/dashboard/upload", label: "Scrape", Icon: Upload },
   { href: "/dashboard/history", label: "History", Icon: History },
+  { href: "/dashboard/settings", label: "Settings", Icon: Settings },
 ];
 
 export function SidebarNav() {

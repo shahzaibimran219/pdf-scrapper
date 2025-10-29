@@ -57,8 +57,22 @@ export async function POST(req: NextRequest) {
   try {
     if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLIC_KEY) {
       const user = await prismaClient.user.findUnique({ where: { id: session.user.id }, select: { credits: true, scrapingFrozen: true } });
-      if (user?.scrapingFrozen) return NextResponse.json(errorEnvelope("BILLING_FROZEN", "Subscription inactive; please reactivate."), { status: 402 });
-      if ((user?.credits ?? 0) < 100) return NextResponse.json(errorEnvelope("INSUFFICIENT_CREDITS", "Not enough credits (100 required)."), { status: 402 });
+      
+      console.log(`[EXTRACT-SMALL] Credit check for user ${session.user.id}:`, {
+        currentCredits: user?.credits ?? 0,
+        required: 100,
+        scrapingFrozen: user?.scrapingFrozen ?? false,
+      });
+      
+      if (user?.scrapingFrozen) {
+        console.log(`[EXTRACT-SMALL] BILLING_FROZEN: User ${session.user.id} subscription is frozen`);
+        return NextResponse.json(errorEnvelope("BILLING_FROZEN", "Subscription inactive; please reactivate."), { status: 402 });
+      }
+      
+      if ((user?.credits ?? 0) < 100) {
+        console.log(`[EXTRACT-SMALL] INSUFFICIENT_CREDITS: User ${session.user.id} has ${user?.credits ?? 0} credits, needs 100`);
+        return NextResponse.json(errorEnvelope("INSUFFICIENT_CREDITS", "Not enough credits (100 required)."), { status: 402 });
+      }
     }
   } catch {}
 
@@ -76,9 +90,13 @@ export async function POST(req: NextRequest) {
   // Optional billing post-debit
   try {
     if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLIC_KEY) {
+      console.log(`[EXTRACT-SMALL] Debiting 100 credits from user ${session.user.id} for successful extraction`);
       await debitCreditsForResume(session.user.id, resume.id, 100);
+      console.log(`[EXTRACT-SMALL] Successfully debited credits for user ${session.user.id}`);
     }
-  } catch {}
+  } catch (err: any) {
+    console.error(`[EXTRACT-SMALL] Failed to debit credits for user ${session.user.id}:`, err.message);
+  }
 
   return NextResponse.json({ resumeId: resume.id, resumeData });
 }

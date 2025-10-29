@@ -142,7 +142,17 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
       });
       if (!extract.ok) {
         const e = await extract.json().catch(() => ({}));
-        toast.error(e?.message ?? "Extraction failed");
+        if (e?.code === "INSUFFICIENT_CREDITS") {
+          toast.error("Insufficient credits! You need at least 100 credits to scrape a PDF. Please upgrade your plan.", {
+            duration: 5000,
+            action: {
+              label: "Upgrade",
+              onClick: () => window.location.href = "/dashboard/settings"
+            }
+          });
+        } else {
+          toast.error(e?.message ?? "Extraction failed");
+        }
       } else {
         const data = await extract.json();
         toast.success("Extraction complete");

@@ -12,19 +12,19 @@ export function assertTestMode() {
 
 export function getSuccessUrl() {
   const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-  return `${base}/settings?checkout=success`;
+  return `${base}/dashboard/settings?checkout=success`;
 }
 
 export function getCancelUrl() {
   const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-  return `${base}/settings?checkout=cancel`;
+  return `${base}/dashboard/settings?checkout=cancel`;
 }
 
-export function getPriceId(plan: "BASIC" | "PRO") {
+export function getPriceId(plan: "Basic" | "Pro") {
   const basic = process.env.STRIPE_PRICE_BASIC;
   const pro = process.env.STRIPE_PRICE_PRO;
-  if (plan === "BASIC" && basic) return basic;
-  if (plan === "PRO" && pro) return pro;
+  if (plan === "Basic" && basic) return basic;
+  if (plan === "Pro" && pro) return pro;
   throw new Error("Unknown or missing STRIPE_PRICE_* for requested plan");
 }
 

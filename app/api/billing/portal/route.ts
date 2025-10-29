@@ -16,8 +16,25 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { stripeCustomerId: true } });
   if (!user?.stripeCustomerId) return NextResponse.json(errorEnvelope("NO_CUSTOMER", "No Stripe customer"), { status: 400 });
 
-  const portal = await stripe.billingPortal.sessions.create({ customer: user.stripeCustomerId });
-  return NextResponse.json({ url: portal.url });
+  try {
+    const portal = await stripe.billingPortal.sessions.create({ 
+      customer: user.stripeCustomerId,
+      return_url: `${process.env.NEXTAUTH_URL}/dashboard/settings`,
+    });
+    return NextResponse.json({ url: portal.url });
+  } catch (error: any) {
+    console.error("[BILLING PORTAL] Error:", error.message);
+    
+    // If portal is not configured, provide helpful error
+    if (error.code === 'resource_missing' || error.message.includes('configuration')) {
+      return NextResponse.json(errorEnvelope(
+        "PORTAL_NOT_CONFIGURED", 
+        "Customer portal not configured. Please configure it in your Stripe dashboard first."
+      ), { status: 400 });
+    }
+    
+    return NextResponse.json(errorEnvelope("PORTAL_ERROR", "Portal creation failed"), { status: 500 });
+  }
 }
 
 

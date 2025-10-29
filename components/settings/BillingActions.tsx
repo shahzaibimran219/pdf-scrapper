@@ -6,13 +6,17 @@ import { toast } from "sonner";
 export default function BillingActions() {
   const [loading, setLoading] = useState<"basic" | "pro" | "portal" | null>(null);
 
-  async function startCheckout(plan: "BASIC" | "PRO") {
+  async function startCheckout(plan: "Basic" | "Pro") {
     try {
-      setLoading(plan === "BASIC" ? "basic" : "pro");
+      setLoading(plan === "Basic" ? "basic" : "pro");
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ 
+          plan,
+          amount: plan === "Basic" ? 1000 : 2000, // $10 or $20 in cents
+          credits: plan === "Basic" ? 10000 : 20000
+        }),
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
@@ -33,7 +37,18 @@ export default function BillingActions() {
       const res = await fetch("/api/billing/portal", { method: "POST" });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        throw new Error(e?.message ?? "Portal failed");
+        if (e?.code === "PORTAL_NOT_CONFIGURED") {
+          toast.error("Customer portal not configured. Please configure it in your Stripe dashboard first.", {
+            duration: 8000,
+            action: {
+              label: "Configure Portal",
+              onClick: () => window.open("https://dashboard.stripe.com/test/settings/billing/portal", "_blank")
+            }
+          });
+        } else {
+          throw new Error(e?.message ?? "Portal failed");
+        }
+        return;
       }
       const data = await res.json();
       window.location.href = data.url;
@@ -46,10 +61,10 @@ export default function BillingActions() {
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Button size="sm" variant="secondary" onClick={() => startCheckout("BASIC")} disabled={loading !== null}>
+      <Button size="sm" variant="secondary" onClick={() => startCheckout("Basic")} disabled={loading !== null}>
         {loading === "basic" ? "Starting…" : "Subscribe Basic"}
       </Button>
-      <Button size="sm" onClick={() => startCheckout("PRO")} disabled={loading !== null}>
+      <Button size="sm" onClick={() => startCheckout("Pro")} disabled={loading !== null}>
         {loading === "pro" ? "Starting…" : "Upgrade to Pro"}
       </Button>
       <Button size="sm" variant="ghost" onClick={openPortal} disabled={loading !== null}>
