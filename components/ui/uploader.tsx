@@ -9,9 +9,27 @@ type Props = {
 
 export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
   const [isUploading, setIsUploading] = useState(false);
-  const [progress, setProgress] = useState<number>(0);
+  // Avoid frequent re-renders: update progress via DOM refs instead of state
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const percentRef = useRef<HTMLSpanElement>(null);
+  const setProgressDom = (p: number) => {
+    const bar = progressBarRef.current;
+    if (bar) bar.style.width = `${p}%`;
+    const pct = percentRef.current;
+    if (pct) pct.textContent = `${p}%`;
+  };
   const [fileName, setFileName] = useState<string>("");
   const [fileSize, setFileSize] = useState<number>(0);
+  const [stage, setStage] = useState<
+    | "idle"
+    | "uploading"
+    | "uploadComplete"
+    | "hashing"
+    | "extracting"
+    | "saving"
+    | "redirecting"
+  >("idle");
+  const setStageSafe = (next: typeof stage) => setStage((cur) => (cur === next ? cur : next));
   const inputRef = useRef<HTMLInputElement>(null);
 
   const onFile = useCallback(async (file: File) => {
@@ -25,7 +43,8 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
     }
     try {
       setIsUploading(true);
-      setProgress(0);
+      setProgressDom(0);
+      setStageSafe("uploading");
       setFileName(file.name);
       setFileSize(file.size);
 
@@ -38,8 +57,11 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
           xhr.open("POST", "/api/extract-small", true);
           xhr.upload.onprogress = (evt) => {
             if (evt.lengthComputable) {
-              setProgress(Math.max(1, Math.round((evt.loaded / evt.total) * 100)));
+              setProgressDom(Math.max(1, Math.round((evt.loaded / evt.total) * 100)));
             }
+          };
+          xhr.upload.onload = () => {
+            setStageSafe("extracting");
           };
           xhr.onreadystatechange = () => {
             if (xhr.readyState === 4) {
@@ -47,6 +69,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
                 try {
                   const data = JSON.parse(xhr.responseText || "{}");
                   toast.success("Extraction complete");
+                  setStageSafe("redirecting");
                   window.location.href = `/resumes/${data.resumeId}`;
                   resolve();
                 } catch (e) {
@@ -88,7 +111,10 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
         const xhr2 = new XMLHttpRequest();
         xhr2.open("POST", signedUrl, true);
         xhr2.upload.onprogress = (evt) => {
-          if (evt.lengthComputable) setProgress(Math.max(1, Math.round((evt.loaded / evt.total) * 100)));
+          if (evt.lengthComputable) setProgressDom(Math.max(1, Math.round((evt.loaded / evt.total) * 100)));
+        };
+        xhr2.upload.onload = () => {
+          setStageSafe("uploadComplete");
         };
         xhr2.onreadystatechange = () => {
           if (xhr2.readyState === 4) {
@@ -103,10 +129,12 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
       toast.success("Upload complete. Starting extraction...");
 
       // Compute content hash (client-side, bytes only)
+      setStageSafe("hashing");
       const buf = await file.arrayBuffer();
       const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(buf));
       const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 
+      setStageSafe("extracting");
       const extract = await fetch("/api/extract", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -118,13 +146,15 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
       } else {
         const data = await extract.json();
         toast.success("Extraction complete");
+        setStageSafe("redirecting");
         window.location.href = `/resumes/${data.resumeId}`;
       }
     } catch (e: any) {
       toast.error(e?.message ?? "Upload failed");
     } finally {
       setIsUploading(false);
-      setProgress(0);
+      setProgressDom(0);
+      setStageSafe("idle");
     }
   }, [maxBytes]);
 
@@ -173,14 +203,18 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
       {isUploading && (
         <div className="mt-6">
           <div className="h-2 w-full rounded bg-[hsl(var(--muted))]">
-            <div
-              className="h-2 rounded bg-[hsl(var(--primary))] transition-all"
-              style={{ width: `${progress}%` }}
-            />
+            <div ref={progressBarRef} className="h-2 rounded bg-[hsl(var(--primary))] transition-all" style={{ width: `0%` }} />
           </div>
           <div className="mt-2 flex items-center justify-between text-xs text-[hsl(var(--muted-foreground))]">
-            <span>Uploading…</span>
-            <span>{progress}%</span>
+            <span>
+              {stage === "uploading" && "Uploading PDF…"}
+              {stage === "uploadComplete" && "Upload complete. Preparing extraction…"}
+              {stage === "hashing" && "Computing file fingerprint…"}
+              {stage === "extracting" && "Scraping and analyzing your resume…"}
+              {stage === "saving" && "Saving results…"}
+              {stage === "redirecting" && "Opening result…"}
+            </span>
+            <span ref={percentRef}>0%</span>
           </div>
         </div>
       )}
