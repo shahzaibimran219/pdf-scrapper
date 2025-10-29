@@ -9,6 +9,7 @@ import { EXTRACT_CONFIG } from "@/config/extract";
 import { computeSourceHash } from "@/lib/hash";
 import { extractResumeWithOpenAI } from "@/lib/extractors/openai";
 import { prisma as prismaClient } from "@/lib/prisma";
+import { debitCreditsForResume } from "@/lib/credits";
 
 export const runtime = "nodejs";
 
@@ -134,8 +135,7 @@ export async function POST(req: NextRequest) {
   // Optional billing post-debit
   try {
     if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLIC_KEY) {
-      await prismaClient.creditLedger.create({ data: { userId: session.user.id, delta: -100, reason: "EXTRACTION_DEBIT", resumeId: resume.id } });
-      await prismaClient.user.update({ where: { id: session.user.id }, data: { credits: { decrement: 100 } } });
+      await debitCreditsForResume(session.user.id, resume.id, 100);
     }
   } catch {}
 
