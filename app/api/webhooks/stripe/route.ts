@@ -141,9 +141,9 @@ export async function POST(req: NextRequest) {
         data: {
           userId: user.id,
           delta: totalCreditsToAdd,
-          reason: "SUBSCRIPTION_PAYMENT",
+          reason: "SUBSCRIPTION_GRANT",
           resumeId: null,
-          metadata: {
+          meta: {
             planType,
             newCredits: creditsToAdd,
             remainingCredits: currentCredits,
