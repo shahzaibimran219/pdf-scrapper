@@ -6,6 +6,7 @@ export type UserBillingSummary = {
   credits: number;
   isLowCredits: boolean; // credits < 100
   needsRenewal: boolean; // credits < 100 and plan !== FREE
+  downgradeScheduled?: boolean;
 };
 
 export async function getCurrentUserBilling(): Promise<UserBillingSummary | null> {
@@ -19,14 +20,16 @@ export async function getCurrentUserBilling(): Promise<UserBillingSummary | null
         session.user.email ? { email: session.user.email } : { id: "__none__" },
       ],
     },
-    select: { planType: true, credits: true },
+    select: { planType: true, credits: true, metadata: true },
   });
 
   if (!user) return { planType: "FREE", credits: 0, isLowCredits: true, needsRenewal: false };
 
   const isLowCredits = (user.credits ?? 0) < 100;
   const needsRenewal = isLowCredits && user.planType !== "FREE";
-  return { planType: user.planType as any, credits: user.credits ?? 0, isLowCredits, needsRenewal };
+  const meta = (user.metadata as any) || {};
+  const downgradeScheduled = !!meta.downgradeScheduled;
+  return { planType: user.planType as any, credits: user.credits ?? 0, isLowCredits, needsRenewal, downgradeScheduled };
 }
 
 

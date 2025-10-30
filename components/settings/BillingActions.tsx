@@ -6,13 +6,14 @@ import { toast } from "sonner";
 import { Loader2, ExternalLink } from "lucide-react";
 
 export default function BillingActions() {
-  const [loading, setLoading] = useState<"portal" | "cancel" | null>(null);
+  const [loading, setLoading] = useState<"portal" | "cancel" | "downgrade" | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [reason, setReason] = useState("");
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const planType = useBillingStore((s) => s.planType);
   const credits = useBillingStore((s) => s.credits);
   const refreshBilling = useBillingStore((s) => s.refresh);
+  const downgradeScheduled = useBillingStore((s) => s.downgradeScheduled);
 
   async function openPortal() {
     try {
@@ -68,6 +69,24 @@ export default function BillingActions() {
     }
   }
 
+  async function scheduleDowngrade() {
+    setLoading("downgrade");
+    try {
+      const res = await fetch("/api/billing/downgrade-schedule", { method: "POST" });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        toast.error(e?.message ?? "Failed to schedule downgrade.");
+        setLoading(null);
+        return;
+      }
+      toast.success("Downgrade to Basic scheduled for next billing period.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to schedule downgrade.");
+    } finally {
+      setLoading(null);
+    }
+  }
+
   return (
     <>
       {/* Modal: Cancel Subscription */}
@@ -106,6 +125,15 @@ export default function BillingActions() {
         </div>
       )}
       <div className="flex flex-wrap gap-2">
+        {planType === "PRO" && (
+          <button
+             className="disabled:opacity-60 disabled:pointer-events-none inline-flex px-3 py-1 cursor-pointer text-sm font-medium rounded-md items-center gap-2 bg-orange-500 text-white hover:bg-orange-600 rounded-md focus:ring-orange-600"
+            disabled={downgradeScheduled || loading === "portal" || loading === "cancel" || loading === "downgrade"}
+            onClick={scheduleDowngrade}
+          >
+            {downgradeScheduled ? "Downgrade scheduled" : (loading === "downgrade" ? (<span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Scheduling…</span>) : "Schedule downgrade to Basic")}
+          </button>
+        )}
         {planType !== "FREE" && (
           <Button
             type="button"

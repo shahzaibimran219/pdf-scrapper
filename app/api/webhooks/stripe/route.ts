@@ -202,10 +202,23 @@ export async function POST(req: NextRequest) {
         metadata: sub.metadata,
       });
 
-      // Get plan from subscription metadata
-      const planType = (sub.metadata?.plan === "Pro" ? "PRO" : "BASIC") as "BASIC" | "PRO";
+      // Get plan from subscription metadata or infer from price
+      let planType: "BASIC" | "PRO" | null = null;
+      if (sub.metadata?.plan) {
+        planType = (sub.metadata.plan === "Pro" ? "PRO" : "BASIC");
+      } else {
+        try {
+          const items = sub.items?.data || [];
+          const price = items[0]?.price;
+          const amount = price?.unit_amount;
+          const productName = (price?.product as any)?.name || price?.nickname || "";
+          if (amount === 1000 || /basic/i.test(productName)) planType = "BASIC";
+          if (amount === 2000 || /pro/i.test(productName)) planType = "PRO";
+        } catch {}
+      }
+      if (!planType) planType = user.planType; // fallback to existing
+
       const prevPlan = user.planType;
-      
       await prisma.user.update({ where: { id: user.id }, data: { planType, stripeSubscriptionId: sub.id } });
       console.log(`[WEBHOOK] User ${user.id} plan updated: ${prevPlan} → ${planType}`);
       
@@ -235,8 +248,37 @@ export async function POST(req: NextRequest) {
         currentCredits: user.credits,
       });
 
-      await prisma.user.update({ where: { id: user.id }, data: { planType: "FREE", scrapingFrozen: true } });
-      console.log(`[WEBHOOK] User ${user.id} downgraded to FREE plan, scraping frozen`);
+      // If a downgrade was scheduled, immediately create a Basic subscription
+      const meta = (user.metadata as any) || {};
+      if (meta.downgradeScheduled && meta.downgradeTarget === "BASIC") {
+        try {
+          const created = await stripe.subscriptions.create({
+            customer: customerId,
+            items: [
+              {
+                price_data: {
+                  currency: "usd",
+                  unit_amount: 1000,
+                  recurring: { interval: "month" },
+                  product_data: { name: "Basic Plan - PDF Scraper" },
+                },
+                quantity: 1,
+              },
+            ],
+            proration_behavior: "none",
+          });
+          console.log(`[WEBHOOK] Created Basic subscription ${created.id} for user ${user.id} as part of scheduled downgrade`);
+          // Clear flags and set scrapingFrozen false; planType will flip to BASIC on invoice.paid
+          delete meta.downgradeScheduled;
+          delete meta.downgradeTarget;
+          await prisma.user.update({ where: { id: user.id }, data: { metadata: meta as any, scrapingFrozen: false } });
+        } catch (e) {
+          console.error(`[WEBHOOK] Failed creating Basic subscription during scheduled downgrade for user ${user.id}`, e);
+        }
+      } else {
+        await prisma.user.update({ where: { id: user.id }, data: { planType: "FREE", scrapingFrozen: true } });
+        console.log(`[WEBHOOK] User ${user.id} downgraded to FREE plan, scraping frozen`);
+      }
     }
   } catch (err: any) {
     console.error("[stripe webhook] handler error", err?.message);
