@@ -12,7 +12,7 @@ export function assertTestMode() {
 
 export function getSuccessUrl() {
   const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-  return `${base}/dashboard/settings?checkout=success`;
+  return `${base}/dashboard/payment-status?session_id={CHECKOUT_SESSION_ID}`;
 }
 
 export function getCancelUrl() {

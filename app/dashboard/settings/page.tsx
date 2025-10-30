@@ -3,20 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUserBilling } from "@/lib/billing/user";
 import BillingActions from "@/components/settings/BillingActions";
 import { redirect } from "next/navigation";
- 
 import PlanCardGrid from "@/components/settings/PlanCardGrid";
-
-export default async function DashboardSettingsPage({ searchParams }: { searchParams: Promise<{ checkout?: string }> }) {
+import { getStripe } from "@/lib/billing/stripe";
+ 
+export default async function DashboardSettingsPage({ searchParams }: { searchParams: Promise<{ checkout?: string, session_id?: string }> }) {
   const billing = await getCurrentUserBilling();
-
   const params = await searchParams;
-
-  // Handle checkout success - verify payment and update user
-  if (params.checkout === "success") {
-    // In a real app, you'd verify the session with Stripe here
-    // For now, we'll just show a success message
-    console.log("Checkout success - webhook should handle the plan update");
-  }
 
   // Show renewal warning if credits are low
   const isLowCredits = billing?.isLowCredits ?? false;
@@ -24,13 +16,6 @@ export default async function DashboardSettingsPage({ searchParams }: { searchPa
 
   return (
     <div className="space-y-6">
-        {params.checkout === "success" && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-            <h2 className="text-lg font-medium text-green-800">Payment Successful!</h2>
-            <h5 className="text-md text-green-700">Your subscription is being processed. Please refresh the page in a moment.</h5>
-          </div>
-        )}
-      
       {needsRenewal && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4">
           <h3 className="text-sm font-medium text-red-800">⚠️ Subscription Renewal Required</h3>
@@ -50,7 +35,6 @@ export default async function DashboardSettingsPage({ searchParams }: { searchPa
         </div>
       )}
 
- 
       <PlanCardGrid billing={billing ?? {planType: "FREE", credits: 0}} />
 
       <div className="rounded-xl border bg-[hsl(var(--card))] p-5 shadow-sm">
