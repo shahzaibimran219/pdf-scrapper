@@ -216,11 +216,12 @@ export async function POST(req: NextRequest) {
           if (amount === 2000 || /pro/i.test(productName)) planType = "PRO";
         } catch {}
       }
-      if (!planType) planType = user.planType; // fallback to existing
-
       const prevPlan = user.planType;
-      await prisma.user.update({ where: { id: user.id }, data: { planType, stripeSubscriptionId: sub.id } });
-      console.log(`[WEBHOOK] User ${user.id} plan updated: ${prevPlan} → ${planType}`);
+      const updateData: any = { stripeSubscriptionId: sub.id };
+      if (planType) updateData.planType = planType;
+
+      await prisma.user.update({ where: { id: user.id }, data: updateData });
+      console.log(`[WEBHOOK] User ${user.id} plan updated: ${prevPlan} → ${planType ?? prevPlan}`);
       
       // Grant credits if upgrading to Pro
       if (prevPlan !== "PRO" && planType === "PRO") {
@@ -252,16 +253,18 @@ export async function POST(req: NextRequest) {
       const meta = (user.metadata as any) || {};
       if (meta.downgradeScheduled && meta.downgradeTarget === "BASIC") {
         try {
+          // Create a basic monthly price on the fly, then subscribe using price id (type-safe)
+          const basicPrice = await stripe.prices.create({
+            currency: "usd",
+            unit_amount: 1000,
+            recurring: { interval: "month" },
+            product_data: { name: "Basic Plan - PDF Scraper" },
+          });
           const created = await stripe.subscriptions.create({
             customer: customerId,
             items: [
               {
-                price_data: {
-                  currency: "usd",
-                  unit_amount: 1000,
-                  recurring: { interval: "month" },
-                  product_data: { name: "Basic Plan - PDF Scraper" },
-                },
+                price: basicPrice.id,
                 quantity: 1,
               },
             ],
