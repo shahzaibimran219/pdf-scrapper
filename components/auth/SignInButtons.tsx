@@ -18,9 +18,9 @@ export function SignInButtons() {
         .login-with-google-btn {
           transition: background-color .3s, box-shadow .3s;
           padding: 12px 16px 12px 42px;
-          border: 1px solid #dfe1e5;
+          border: 1px solid rgb(44, 44, 44);
           border-radius: 3px;
-          box-shadow: 0 -1px 0 rgba(0, 0, 0, .04), 0 1px 1px rgba(0, 0, 0, .25);
+          box-shadow: 0 -1px 0 rgba(0, 0, 0, .04), 0 1px 1px rgba(0, 0, 0);
           color: #757575;
           font-size: 14px;
           font-weight: 500;

@@ -2,6 +2,7 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabaseClient } from "@/lib/supabase-client";
+import { Loader2 } from "lucide-react";
 import { useBillingStore } from "@/lib/state/billing";
 import { UploadCloud } from "lucide-react";
 
@@ -33,6 +34,35 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
   >("idle");
   const setStageSafe = (next: typeof stage) => setStage((cur) => (cur === next ? cur : next));
   const inputRef = useRef<HTMLInputElement>(null);
+  // Rotating message refs to avoid re-renders
+  const tipRef = useRef<HTMLSpanElement>(null);
+  const tipTimerRef = useRef<number | null>(null);
+  const tips = useRef<string[]>([
+    "Parsing contact info and links…",
+    "Extracting experience bullets with dates…",
+    "Detecting education and normalizing years…",
+    "Spotting skills and technologies…",
+    "Structuring JSON to match schema v2.0.0…",
+  ]);
+  const startTips = () => {
+    // Prevent duplicate timers
+    if (tipTimerRef.current) return;
+    let i = 0;
+    const el = tipRef.current;
+    if (!el) return;
+    el.textContent = tips.current[i % tips.current.length];
+    tipTimerRef.current = window.setInterval(() => {
+      i += 1;
+      if (tipRef.current) tipRef.current.textContent = tips.current[i % tips.current.length];
+    }, 1500) as unknown as number;
+  };
+  const stopTips = () => {
+    if (tipTimerRef.current) {
+      window.clearInterval(tipTimerRef.current);
+      tipTimerRef.current = null;
+    }
+    if (tipRef.current) tipRef.current.textContent = "";
+  };
 
   const onFile = useCallback(async (file: File) => {
     if (file.type !== "application/pdf") {
@@ -78,6 +108,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
           };
           xhr.upload.onload = () => {
             setStageSafe("extracting");
+            startTips();
           };
           xhr.onreadystatechange = () => {
             if (xhr.readyState === 4) {
@@ -86,6 +117,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
                   const data = JSON.parse(xhr.responseText || "{}");
                   toast.success("Extraction complete");
                   setStageSafe("redirecting");
+                  stopTips();
                   window.location.href = `/resumes/${data.resumeId}`;
                   resolve();
                 } catch (e) {
@@ -146,6 +178,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
 
       // Compute content hash (client-side, bytes only)
       setStageSafe("hashing");
+      startTips();
       const buf = await file.arrayBuffer();
       const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(buf));
       const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -173,6 +206,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
         const data = await extract.json();
         toast.success("Extraction complete");
         setStageSafe("redirecting");
+        stopTips();
         window.location.href = `/resumes/${data.resumeId}`;
       }
     } catch (e: any) {
@@ -181,6 +215,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
       setIsUploading(false);
       setProgressDom(0);
       setStageSafe("idle");
+      stopTips();
     }
   }, [maxBytes]);
 
@@ -242,6 +277,13 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
             </span>
             <span ref={percentRef}>0%</span>
           </div>
+          {/* Engaging rotating tips while waiting */}
+          {stage !== "uploading" && stage !== "idle" && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span ref={tipRef} />
+            </div>
+          )}
         </div>
       )}
 

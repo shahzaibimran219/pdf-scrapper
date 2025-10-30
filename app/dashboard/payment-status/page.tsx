@@ -8,6 +8,7 @@ export default function PaymentStatusPage() {
   const searchParams = useSearchParams();
   const session_id = searchParams.get("session_id");
   const [status, setStatus] = useState<"loading" | "success" | "fail">("loading");
+  const [countdown, setCountdown] = useState(4);
 
   useEffect(() => {
     if (!session_id) {
@@ -17,11 +18,21 @@ export default function PaymentStatusPage() {
     fetch(`/api/billing/verify-session?session_id=${session_id}`)
       .then(res => res.json())
       .then(data => {
-        setStatus(data.success ? "success" : "fail");
-        if (data.success) {
-          setTimeout(() => {
-            router.push("/dashboard/settings");
-          }, 4000);
+        const ok = !!data.success;
+        setStatus(ok ? "success" : "fail");
+        if (ok) {
+          // Start countdown and redirect at 0
+          setCountdown(4);
+          const iv = window.setInterval(() => {
+            setCountdown((c) => {
+              if (c <= 1) {
+                window.clearInterval(iv);
+                router.push("/dashboard/settings");
+                return 0;
+              }
+              return c - 1;
+            });
+          }, 1000);
         }
       })
       .catch(() => setStatus("fail"));
@@ -41,13 +52,8 @@ export default function PaymentStatusPage() {
           <>
             <CheckCircle2 className="h-16 w-16 text-green-500 mb-1" />
             <h2 className="text-xl font-bold text-green-700 mb-0.5">Payment Successful!</h2>
-            <p className="text-center text-zinc-700 mb-4">Your subscription has been activated. Redirecting to your dashboard…</p>
-            <button
-              className="rounded bg-[hsl(var(--primary))] text-white px-6 py-2 text-sm font-semibold mt-2 shadow hover:opacity-90"
-              onClick={() => router.push("/dashboard/settings")}
-            >
-              Continue to Dashboard
-            </button>
+            <p className="text-center text-zinc-700 mb-1">Your subscription has been activated.</p>
+            <p className="text-center text-zinc-500 text-sm">Redirecting to your dashboard in {countdown}s…</p>
           </>
         )}
         {status === "fail" && (
