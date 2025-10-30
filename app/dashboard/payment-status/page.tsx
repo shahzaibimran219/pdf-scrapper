@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
 
@@ -9,6 +9,7 @@ export default function PaymentStatusPage() {
   const session_id = searchParams.get("session_id");
   const [status, setStatus] = useState<"loading" | "success" | "fail">("loading");
   const [countdown, setCountdown] = useState(4);
+  const ivRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!session_id) {
@@ -21,22 +22,24 @@ export default function PaymentStatusPage() {
         const ok = !!data.success;
         setStatus(ok ? "success" : "fail");
         if (ok) {
-          // Start countdown and redirect at 0
           setCountdown(4);
-          const iv = window.setInterval(() => {
-            setCountdown((c) => {
-              if (c <= 1) {
-                window.clearInterval(iv);
-                router.push("/dashboard/settings");
-                return 0;
-              }
-              return c - 1;
-            });
-          }, 1000);
+          if (ivRef.current) window.clearInterval(ivRef.current);
+          ivRef.current = window.setInterval(() => {
+            setCountdown((c) => c - 1);
+          }, 1000) as unknown as number;
         }
       })
       .catch(() => setStatus("fail"));
-  }, [session_id, router]);
+    return () => { if (ivRef.current) window.clearInterval(ivRef.current); };
+  }, [session_id]);
+
+  // Redirect when countdown finishes on success, outside of setState callback
+  useEffect(() => {
+    if (status === "success" && countdown <= 0) {
+      if (ivRef.current) window.clearInterval(ivRef.current);
+      router.push("/dashboard/settings");
+    }
+  }, [status, countdown, router]);
 
   return (
     <main className="flex min-h-[40vh] items-center justify-center bg-gradient-to-b from-white to-zinc-50 px-2">

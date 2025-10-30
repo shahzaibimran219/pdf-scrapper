@@ -34,12 +34,21 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Clear any scheduled downgrade flags BEFORE Stripe cancels to avoid webhook auto-creating Basic
+  const clearedMeta = { ...(user.metadata as any), downgradeScheduled: undefined, downgradeTarget: undefined } as any;
+  try {
+    await prisma.user.update({ where: { id: user.id }, data: { metadata: clearedMeta as any } });
+  } catch {}
+
   // Cancel Stripe subscription
   try {
     const stripe = getStripe();
-    await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+    await stripe.subscriptions.cancel(user.stripeSubscriptionId );
   } catch (err: any) {
-    return NextResponse.json(errorEnvelope("STRIPE_ERROR", "Failed to cancel Stripe subscription."), { status: 500 });
+    // Swallow already canceled/sub missing and proceed
+    if (err?.raw?.code !== 'resource_missing' && err?.code !== 'resource_missing') {
+      return NextResponse.json(errorEnvelope("STRIPE_ERROR", "Failed to cancel Stripe subscription."), { status: 500 });
+    }
   }
 
   // Remove DB subscription, zero credits, freeze scraping, set free plan
@@ -50,6 +59,7 @@ export async function POST(req: NextRequest) {
       credits: 0,
       scrapingFrozen: true,
       stripeSubscriptionId: null,
+      metadata: clearedMeta as any,
     },
   });
 
