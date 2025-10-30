@@ -1,41 +1,26 @@
 import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUserBilling } from "@/lib/billing/user";
 import BillingActions from "@/components/settings/BillingActions";
 import { redirect } from "next/navigation";
-
-export default async function DashboardSettingsPage({ searchParams }: { searchParams: Promise<{ checkout?: string }> }) {
-  const session = await getServerSession();
-  const user = session?.user?.id
-    ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { planType: true, credits: true } })
-    : null;
-
+import PlanCardGrid from "@/components/settings/PlanCardGrid";
+import { getStripe } from "@/lib/billing/stripe";
+ 
+export default async function DashboardSettingsPage({ searchParams }: { searchParams: Promise<{ checkout?: string, session_id?: string }> }) {
+  const billing = await getCurrentUserBilling();
   const params = await searchParams;
 
-  // Handle checkout success - verify payment and update user
-  if (params.checkout === "success") {
-    // In a real app, you'd verify the session with Stripe here
-    // For now, we'll just show a success message
-    console.log("Checkout success - webhook should handle the plan update");
-  }
-
   // Show renewal warning if credits are low
-  const isLowCredits = (user?.credits ?? 0) < 100;
-  const needsRenewal = (user?.credits ?? 0) < 100 && user?.planType !== "FREE";
+  const isLowCredits = billing?.isLowCredits ?? false;
+  const needsRenewal = billing?.needsRenewal ?? false;
 
   return (
     <div className="space-y-6">
-      {params.checkout === "success" && (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-          <h3 className="text-sm font-medium text-green-800">Payment Successful!</h3>
-          <p className="text-sm text-green-700">Your subscription is being processed. Please refresh the page in a moment.</p>
-        </div>
-      )}
-      
       {needsRenewal && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4">
           <h3 className="text-sm font-medium text-red-800">⚠️ Subscription Renewal Required</h3>
           <p className="text-sm text-red-700">
-            You have {user?.credits ?? 0} credits remaining. You need at least 100 credits to scrape PDFs. 
+            You have {billing?.credits ?? 0} credits remaining. You need at least 100 credits to scrape PDFs. 
             Please renew your subscription to continue using the service.
           </p>
         </div>
@@ -45,10 +30,12 @@ export default async function DashboardSettingsPage({ searchParams }: { searchPa
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
           <h3 className="text-sm font-medium text-yellow-800">⚠️ Low Credits Warning</h3>
           <p className="text-sm text-yellow-700">
-            You have {user?.credits ?? 0} credits remaining. Consider upgrading your plan for more credits.
+            You have {billing?.credits ?? 0} credits remaining. Consider upgrading your plan for more credits.
           </p>
         </div>
       )}
+
+      <PlanCardGrid billing={billing ?? {planType: "FREE", credits: 0}} />
 
       <div className="rounded-xl border bg-[hsl(var(--card))] p-5 shadow-sm">
         <h2 className="text-lg font-medium">Subscription</h2>
@@ -56,15 +43,15 @@ export default async function DashboardSettingsPage({ searchParams }: { searchPa
         <div className="mt-4 grid gap-2 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-[hsl(var(--muted-foreground))]">Current plan</span>
-            <span className="font-medium">{user?.planType ?? "FREE"}</span>
+            <span className="font-medium">{billing?.planType ?? "FREE"}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[hsl(var(--muted-foreground))]">Credits</span>
             <span className={`font-medium ${isLowCredits ? 'text-red-600' : ''}`}>
-              {user?.credits ?? 0}
+              {billing?.credits ?? 0}
             </span>
           </div>
-          {user?.planType !== "FREE" && (
+          {billing?.planType !== "FREE" && (
             <div className="flex items-center justify-between">
               <span className="text-[hsl(var(--muted-foreground))]">Status</span>
               <span className={`font-medium ${needsRenewal ? 'text-red-600' : 'text-green-600'}`}>

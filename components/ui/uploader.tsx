@@ -2,6 +2,8 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabaseClient } from "@/lib/supabase-client";
+import { useBillingStore } from "@/lib/state/billing";
+import { UploadCloud } from "lucide-react";
 
 type Props = {
   maxBytes?: number;
@@ -41,6 +43,20 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
       toast.error("File exceeds 10 MB limit");
       return;
     }
+    // Client-side guard: ensure at least 100 credits before any upload/work
+    try {
+      const credits = useBillingStore.getState().credits;
+      if (typeof credits === "number" && credits < 100) {
+        toast.error("You need at least 100 credits to upload.", {
+          duration: 5000,
+          action: {
+            label: "Upgrade",
+            onClick: () => (window.location.href = "/dashboard/settings"),
+          },
+        });
+        return;
+      }
+    } catch {}
     try {
       setIsUploading(true);
       setProgressDom(0);
@@ -188,7 +204,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
         onClick={() => inputRef.current?.click()}
       >
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] shadow-sm">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 15v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-4"/><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/></svg>
+          <UploadCloud className="h-5 w-5" />
         </div>
         <p className="text-sm">
           <span className="font-medium">Drag & drop</span> your PDF here or

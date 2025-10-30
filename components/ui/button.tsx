@@ -15,7 +15,7 @@ export function Button({ className, variant = "primary", size = "md", ...props }
     lg: "h-12 px-6 text-base",
   } as const;
   const variants = {
-    primary: "bg-black text-white hover:bg-zinc-800 focus:ring-black",
+    primary: "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:opacity-90 focus:ring-[hsl(var(--primary))]",
     secondary: "bg-white text-black border border-zinc-300 hover:bg-zinc-50 focus:ring-zinc-400",
     danger: "bg-red-600 text-white hover:bg-red-500 focus:ring-red-500",
     ghost: "bg-transparent hover:bg-zinc-100",

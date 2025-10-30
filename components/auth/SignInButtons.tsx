@@ -1,18 +1,57 @@
 "use client";
 import { signIn } from "next-auth/react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 export function SignInButtons() {
+  const [loading, setLoading] = useState(false);
+  const onGoogle = async () => {
+    try {
+      setLoading(true);
+      await signIn("google", { callbackUrl: "/dashboard" });
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
-    <div className="flex flex-col gap-3">
-      <Button
-        onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-        className="inline-flex items-center gap-2"
+    <>
+      <style>{`
+        .login-with-google-btn {
+          transition: background-color .3s, box-shadow .3s;
+          padding: 12px 16px 12px 42px;
+          border: 1px solid #dfe1e5;
+          border-radius: 3px;
+          box-shadow: 0 -1px 0 rgba(0, 0, 0, .04), 0 1px 1px rgba(0, 0, 0, .25);
+          color: #757575;
+          font-size: 14px;
+          font-weight: 500;
+          font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
+          background-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNMTcuNiA5LjJsLS4xLTEuOEg5djMuNGg0LjhDMTMuNiAxMiAxMyAxMyAxMiAxMy42djIuMmgzYTguOCA4LjggMCAwIDAgMi42LTYuNnoiIGZpbGw9IiM0Mjg1RjQiIGZpbGwtcnVsZT0ibm9uemVybyIvPjxwYXRoIGQ9Ik05IDE4YzIuNCAwIDQuNS0uOCA2LTIuMmwtMy0yLjJhNS40IDUuNCAwIDAgMS04LTIuOUgxVjEzYTkgOSAwIDAgMCA4IDV6IiBmaWxsPSIjMzRBODUzIiBmaWxsLXJ1bGU9Im5vbnplcm8iLz48cGF0aCBkPSJNNCAxMC43YTUuNCA1LjQgMCAwIDEgMC0zLjRWNUgxYTkgOSAwIDAgMCAwIDhsMy0yLjN6IiBmaWxsPSIjRkJCQzA1IiBmaWxsLXJ1bGU9Im5vbnplcm8iLz48cGF0aCBkPSJNOSAzLjZjMS4zIDAgMi41LjQgMy40IDEuM0wxNSAyLjNBOSA5IDAgMCAwIDEgNWwzIDIuNGE1LjQgNS40IDAgMCAxIDUtMy43eiIgZmlsbD0iI0VBNDMzNSIgZmlsbC1ydWxlPSJub256ZXJvIi8+PHBhdGggZD0iTTAgMGgxOHYxOEgweiIvPjwvZz48L3N2Zz4=);
+          background-color: white;
+          background-repeat: no-repeat;
+          background-position: 12px 15px;
+          cursor: pointer;
+        }
+        .login-with-google-btn:hover {
+          box-shadow: 0 -1px 0 rgba(0, 0, 0, .04), 0 2px 4px rgba(0, 0, 0, .25);
+        }
+        .login-with-google-btn:active {
+          background-color: #eeeeee;
+        }
+        .login-with-google-btn:focus {
+          outline: none;
+          box-shadow: 0 -1px 0 rgba(0, 0, 0, .04), 0 2px 4px rgba(0, 0, 0, .25), 0 0 0 3px #c8dafc;
+        }
+      `}</style>
+      <button
+        type="button"
+        className="login-with-google-btn w-[80%]"
+        onClick={onGoogle}
+        disabled={loading}
+        aria-busy={loading}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-4 w-4"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 s5.373-12,12-12c3.059,0,5.842,1.158,7.961,3.039l5.657-5.657C33.091,6.053,28.745,4,24,4C12.954,4,4,12.954,4,24 s8.954,20,20,20s20-8.954,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,16.108,19.009,13,24,13c3.059,0,5.842,1.158,7.961,3.039l5.657-5.657 C33.091,6.053,28.745,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.197l-6.191-5.238C29.211,35.091,26.715,36,24,36 c-5.202,0-9.619-3.317-11.279-7.958l-6.522,5.025C9.495,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.236-2.231,4.166-4.1,5.575 c0.001-0.001,0.002-0.001,0.003-0.002l6.191,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
-        Continue with Google
-      </Button>
-    </div>
+        {loading ? "Signing in…" : "Sign in with Google"}
+      </button>
+    </>
   );
 }
 
