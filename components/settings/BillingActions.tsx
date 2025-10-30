@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useBillingStore } from "@/lib/state/billing";
 import { toast } from "sonner";
+import { Loader2, CreditCard, ArrowUpRight, ExternalLink } from "lucide-react";
 
 export default function BillingActions() {
   const [loading, setLoading] = useState<"basic" | "pro" | "portal" | null>(null);
@@ -70,8 +71,19 @@ export default function BillingActions() {
         onClick={() => startCheckout("Basic")}
         disabled={loading !== null || planType !== "FREE"}
         title={planType !== "FREE" ? "Already subscribed or on Pro" : undefined}
+        aria-busy={loading === "basic"}
       >
-        {loading === "basic" ? "Starting…" : "Subscribe Basic"}
+        {loading === "basic" ? (
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Starting…
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Subscribe Basic
+          </span>
+        )}
       </Button>
       <Button
         size="sm"
@@ -81,11 +93,32 @@ export default function BillingActions() {
           (planType === "PRO" && credits > 0)
         }
         title={planType === "PRO" && credits > 0 ? "You still have Pro credits" : undefined}
+        aria-busy={loading === "pro"}
       >
-        {loading === "pro" ? "Starting…" : "Upgrade to Pro"}
+        {loading === "pro" ? (
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Starting…
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-2">
+            <ArrowUpRight className="h-4 w-4" />
+            Upgrade to Pro
+          </span>
+        )}
       </Button>
-      <Button size="sm" variant="ghost" onClick={openPortal} disabled={loading !== null}>
-        {loading === "portal" ? "Opening…" : "Manage Billing"}
+      <Button size="sm" variant="ghost" onClick={openPortal} disabled={loading !== null} aria-busy={loading === "portal"}>
+        {loading === "portal" ? (
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Opening…
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-2">
+            <ExternalLink className="h-4 w-4" />
+            Manage Billing
+          </span>
+        )}
       </Button>
     </div>
   );
