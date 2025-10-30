@@ -1,9 +1,11 @@
 import ResumeUploader from "@/components/ResumeUploader";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import BillingBanner from "@/components/billing/BillingBanner";
 
 export default async function UploadPage() {
   return (
     <div className="space-y-6">
+      <BillingBanner />
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="md:col-span-1">
           <CardHeader>
