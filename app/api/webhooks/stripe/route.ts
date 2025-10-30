@@ -33,8 +33,9 @@ export async function POST(req: NextRequest) {
   console.log(`[WEBHOOK] Event ${event.id} logged for processing`);
 
   try {
-    if (event.type === "invoice.paid") {
+    if (["invoice.paid", "invoice.payment_succeeded", "invoice_payment.paid"].includes(event.type)) {
       console.log(`[WEBHOOK] Processing invoice.paid event`);
+      console.log("Event:", event);
       const invoice = event.data.object;
       
       // Check if this is a subscription invoice
