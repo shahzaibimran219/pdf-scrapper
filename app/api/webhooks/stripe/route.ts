@@ -22,34 +22,59 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: err.message }, { status: 400 });
   }
 
-  // Idempotency: skip if we already processed
-  const exists = await prisma.billingEventLog.findUnique({ where: { eventId: event.id } });
-  if (exists) {
-    console.log(`[WEBHOOK] Event ${event.id} already processed, skipping`);
-    return NextResponse.json({ ok: true, idempotent: true });
+  // Idempotency: attempt to log; if duplicate, skip processing
+  try {
+    await prisma.billingEventLog.create({ data: { eventId: event.id, type: event.type, payloadMinimal: { id: event.id, type: event.type } as any } });
+    console.log(`[WEBHOOK] Event ${event.id} logged for processing`);
+  } catch (e: any) {
+    if (e?.code === 'P2002') {
+      console.log(`[WEBHOOK] Event ${event.id} already processed (unique), skipping`);
+      return NextResponse.json({ ok: true, idempotent: true });
+    }
+    throw e;
   }
-
-  await prisma.billingEventLog.create({ data: { eventId: event.id, type: event.type, payloadMinimal: { id: event.id, type: event.type } as any } });
-  console.log(`[WEBHOOK] Event ${event.id} logged for processing`);
 
   try {
     if (["invoice.paid", "invoice.payment_succeeded", "invoice_payment.paid"].includes(event.type)) {
       console.log(`[WEBHOOK] Processing invoice.paid event`);
       console.log("Event:", event);
-      const invoice = event.data.object;
+      let invoice = event.data.object;
+      // Support the new invoice_payment.paid payload which references an invoice id
+      if (invoice?.object === "invoice_payment" && invoice?.invoice) {
+        try {
+          const fetched = await stripe.invoices.retrieve(invoice.invoice as string);
+          invoice = fetched;
+        } catch {
+          console.warn(`[WEBHOOK] Could not fetch invoice ${invoice?.invoice} from invoice_payment, skipping`);
+          return NextResponse.json({ ok: true });
+        }
+      }
       
-      // Check if this is a subscription invoice
-      if (!invoice.subscription) {
-        console.log(`[WEBHOOK] Invoice ${invoice.id} is not a subscription invoice, skipping`);
+      // Resolve subscription/customer robustly across API variants
+      let subscriptionId: string | null = (invoice as any).subscription ?? (invoice as any).subscription_exposed_id ?? null;
+      let customerId: string | null = (invoice as any).customer ?? null;
+
+      // If missing invoice, try to backfill via Stripe
+      if (!customerId && subscriptionId) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          customerId = (sub.customer as string) ?? null;
+        } catch {}
+      }
+      if (customerId && !subscriptionId) {
+        try {
+          const subs = await stripe.subscriptions.list({ customer: customerId, limit: 1 });
+          subscriptionId = subs.data[0]?.id ?? null;
+        } catch {}
+      }
+      if (!customerId) {
+        console.log(`[WEBHOOK] Invoice ${invoice.id} has no customer reference; skipping`);
         return NextResponse.json({ ok: true });
       }
       
-      const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
-      const customerId = subscription.customer as string;
-      
       console.log(`[WEBHOOK] Invoice details:`, {
         invoiceId: invoice.id,
-        subscriptionId: subscription.id,
+        subscriptionId,
         customerId,
         amount: invoice.amount_paid,
         currency: invoice.currency,
@@ -126,7 +151,7 @@ export async function POST(req: NextRequest) {
           planType, 
           credits: totalCreditsToAdd,
           scrapingFrozen: false, 
-          stripeSubscriptionId: subscription.id 
+          ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
         } 
       });
       
@@ -134,7 +159,7 @@ export async function POST(req: NextRequest) {
         planType,
         credits: totalCreditsToAdd,
         scrapingFrozen: false,
-        stripeSubscriptionId: subscription.id,
+        stripeSubscriptionId: subscriptionId,
       });
       
       // Log the credit grant with details

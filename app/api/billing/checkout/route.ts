@@ -22,13 +22,40 @@ export async function POST(req: NextRequest) {
 
   const stripe = getStripe();
 
-  // Ensure stripe customer
-  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { stripeCustomerId: true, email: true } });
-  let customerId = user?.stripeCustomerId ?? null;
+  // Ensure we have a DB user and a valid Stripe customer (self-healing)
+  const existingById = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, email: true, name: true, stripeCustomerId: true },
+  });
+  const emailFromSession = session.user.email ?? undefined;
+  let dbUser = existingById ?? (emailFromSession
+    ? await prisma.user.upsert({
+        where: { email: emailFromSession },
+        update: {},
+        create: { email: emailFromSession, name: session.user.name ?? null },
+        select: { id: true, email: true, name: true, stripeCustomerId: true },
+      })
+    : null);
+  if (!dbUser) return NextResponse.json(errorEnvelope("BAD_REQUEST", "User email required"), { status: 400 });
+
+  let customerId = dbUser.stripeCustomerId ?? null;
+  if (customerId) {
+    try {
+      const c = await stripe.customers.retrieve(customerId);
+      // @ts-ignore: deleted flag may exist
+      if ((c as any).deleted) customerId = null;
+    } catch {
+      customerId = null;
+    }
+  }
   if (!customerId) {
-    const customer = await stripe.customers.create({ email: user?.email ?? undefined });
-    customerId = customer.id;
-    await prisma.user.update({ where: { id: session.user.id }, data: { stripeCustomerId: customerId } });
+    const created = await stripe.customers.create({
+      email: dbUser.email ?? undefined,
+      name: dbUser.name ?? undefined,
+      metadata: { userId: dbUser.id },
+    });
+    customerId = created.id;
+    await prisma.user.update({ where: { id: dbUser.id }, data: { stripeCustomerId: customerId } });
   }
 
   // Create custom checkout session with price_data instead of price ID
@@ -55,13 +82,13 @@ export async function POST(req: NextRequest) {
     metadata: {
       plan: body.plan,
       credits: body.credits.toString(),
-      userId: session.user.id,
+      userId: dbUser.id,
     },
   });
 
   // Store session ID in user record for webhook lookup
   await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: dbUser.id },
     data: { 
       stripeCustomerId: customerId,
       // Store checkout session metadata for webhook
@@ -74,7 +101,7 @@ export async function POST(req: NextRequest) {
   });
 
   console.log(`[CHECKOUT] User ${session.user.id} initiated ${body.plan} plan checkout:`, {
-    userId: session.user.id,
+    userId: dbUser.id,
     plan: body.plan,
     amount: body.amount,
     credits: body.credits,
