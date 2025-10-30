@@ -26,7 +26,9 @@ export default async function Header() {
           </div>
         </Link>
         <nav className="flex items-center gap-3 text-sm">
-          <Link href="/dashboard" className="hidden sm:inline opacity-90 hover:opacity-100">Dashboard</Link>
+          {session ? (
+            <Link href="/dashboard" className="hidden sm:inline opacity-90 hover:opacity-100">Dashboard</Link>
+          ) : null}
           {session ? (
             <UserMenu email={session.user.email} image={session.user.image ?? null} />
           ) : (

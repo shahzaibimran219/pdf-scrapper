@@ -1,10 +1,13 @@
 "use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useBillingStore } from "@/lib/state/billing";
 import { toast } from "sonner";
 
 export default function BillingActions() {
   const [loading, setLoading] = useState<"basic" | "pro" | "portal" | null>(null);
+  const planType = useBillingStore((s) => s.planType);
+  const credits = useBillingStore((s) => s.credits);
 
   async function startCheckout(plan: "Basic" | "Pro") {
     try {
@@ -61,10 +64,24 @@ export default function BillingActions() {
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Button size="sm" variant="secondary" onClick={() => startCheckout("Basic")} disabled={loading !== null}>
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={() => startCheckout("Basic")}
+        disabled={loading !== null || planType !== "FREE"}
+        title={planType !== "FREE" ? "Already subscribed or on Pro" : undefined}
+      >
         {loading === "basic" ? "Starting…" : "Subscribe Basic"}
       </Button>
-      <Button size="sm" onClick={() => startCheckout("Pro")} disabled={loading !== null}>
+      <Button
+        size="sm"
+        onClick={() => startCheckout("Pro")}
+        disabled={
+          loading !== null ||
+          (planType === "PRO" && credits > 0)
+        }
+        title={planType === "PRO" && credits > 0 ? "You still have Pro credits" : undefined}
+      >
         {loading === "pro" ? "Starting…" : "Upgrade to Pro"}
       </Button>
       <Button size="sm" variant="ghost" onClick={openPortal} disabled={loading !== null}>

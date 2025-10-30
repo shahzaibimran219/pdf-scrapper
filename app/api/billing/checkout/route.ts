@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   // Ensure we have a DB user and a valid Stripe customer (self-healing)
   const existingById = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, email: true, name: true, stripeCustomerId: true },
+    select: { id: true, email: true, name: true, stripeCustomerId: true, planType: true, credits: true },
   });
   const emailFromSession = session.user.email ?? undefined;
   let dbUser = existingById ?? (emailFromSession
@@ -33,10 +33,28 @@ export async function POST(req: NextRequest) {
         where: { email: emailFromSession },
         update: {},
         create: { email: emailFromSession, name: session.user.name ?? null },
-        select: { id: true, email: true, name: true, stripeCustomerId: true },
+        select: { id: true, email: true, name: true, stripeCustomerId: true, planType: true, credits: true },
       })
     : null);
   if (!dbUser) return NextResponse.json(errorEnvelope("BAD_REQUEST", "User email required"), { status: 400 });
+
+  // Business rules: prevent duplicate/invalid purchases
+  const planRequested = body.plan; // "Basic" | "Pro"
+  const currentPlan = dbUser.planType ?? "FREE";
+  const currentCredits = dbUser.credits ?? 0;
+
+  // Disallow buying Basic again if already BASIC
+  if (currentPlan === "BASIC" && planRequested === "Basic") {
+    return NextResponse.json(errorEnvelope("ALREADY_BASIC", "You are already on Basic plan"), { status: 400 });
+  }
+  // Disallow downgrades from PRO to Basic
+  if (currentPlan === "PRO" && planRequested === "Basic") {
+    return NextResponse.json(errorEnvelope("DOWNGRADE_NOT_ALLOWED", "You cannot downgrade from Pro to Basic"), { status: 400 });
+  }
+  // If already PRO, only allow renewal when credits are exhausted
+  if (currentPlan === "PRO" && planRequested === "Pro" && currentCredits > 0) {
+    return NextResponse.json(errorEnvelope("PRO_ACTIVE", "You still have Pro credits available"), { status: 400 });
+  }
 
   let customerId = dbUser.stripeCustomerId ?? null;
   if (customerId) {

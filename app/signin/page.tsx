@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getServerSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { SignInButtons } from "@/components/auth/SignInButtons";
@@ -11,10 +12,7 @@ export default async function SignInPage() {
       <div className="mx-auto max-w-6xl px-6 py-16">
         <div className="mx-auto max-w-md">
           <div className="mb-8 text-center">
-            <Link href="/" className="inline-flex items-center gap-2 justify-center">
-              <span className="inline-block h-8 w-8 rounded bg-black" />
-              <span className="text-xl font-semibold tracking-tight">Resume Scraper</span>
-            </Link>
+          
             <h1 className="mt-6 text-2xl font-semibold tracking-tight">Welcome back</h1>
             <p className="mt-1 text-sm text-zinc-600">Sign in to continue</p>
           </div>
@@ -26,9 +24,9 @@ export default async function SignInPage() {
             </p>
           </div>
 
-          <p className="mt-6 text-center text-sm text-zinc-600">
+          {/* <p className="mt-6 text-center text-sm text-zinc-600">
             Don&apos;t have access yet? <a className="underline" href="#">Request access</a>
-          </p>
+          </p> */}
         </div>
       </div>
     </main>
