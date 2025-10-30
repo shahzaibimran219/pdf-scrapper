@@ -1,5 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type Props = {
   jsonText: string;
@@ -20,7 +21,10 @@ export function ExportCopyButtons({ jsonText, downloadName }: Props) {
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(jsonText);
-    } catch {}
+      toast.success("JSON copied to clipboard!");
+    } catch {
+      toast.error("Failed to copy JSON to clipboard");
+    }
   }
 
   return (

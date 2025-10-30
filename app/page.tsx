@@ -12,7 +12,7 @@ export default async function Home() {
       <section className="relative overflow-hidden">
         <div className="container py-24 sm:py-16">
           <div className="max-w-2xl">
-            <span className="inline-flex items-center text-xs font-medium text-[hsl(var(--secondary-foreground))] ml-1">AI‑powered resume parser</span>
+            <span className="inline-flex items-center text-xs font-medium text-[hsl(var(--secondary-foreground))] ml-1">AI‑Powered Resume Parser</span>
             <h1 className="mt-3 px-0 text-4xl font-semibold tracking-tight sm:text-5xl">
               Extract structured data from any resume PDF
             </h1>
