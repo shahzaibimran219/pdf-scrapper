@@ -11,6 +11,7 @@ export default async function Header() {
       <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
         <Link
           href="/"
+          prefetch
           className="flex items-center gap-3 sm:gap-4"
           style={{ flexBasis: 0, flexGrow: 1, minWidth: 0 }}
         >
@@ -21,12 +22,12 @@ export default async function Header() {
         </Link>
         <nav className="flex items-center gap-3 text-sm">
           {session ? (
-            <Link href="/dashboard" className="hidden sm:inline opacity-90 hover:opacity-100">Dashboard</Link>
+            <Link href="/dashboard" prefetch className="hidden sm:inline opacity-90 hover:opacity-100">Dashboard</Link>
           ) : null}
           {session ? (
             <UserMenu email={session.user.email} image={session.user.image ?? null} />
           ) : (
-            <Link href="/signin">
+            <Link href="/signin" prefetch>
               <Button variant="primary" size="md" >
                 <span>{session ? "Go to Dashboard" : "Sign in"}</span>
                 <ArrowRight className="h-4 w-4" />

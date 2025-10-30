@@ -24,6 +24,7 @@ export function SidebarNav() {
             <Link
               key={href}
               href={href}
+              prefetch
               aria-current={active ? "page" : undefined}
               className={
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-sm border transition-colors " +

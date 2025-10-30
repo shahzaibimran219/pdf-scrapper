@@ -12,7 +12,7 @@ export default async function Home() {
       <section className="relative overflow-hidden">
         <div className="container py-24 sm:py-16">
           <div className="max-w-2xl">
-            <span className="inline-flex items-center text-xs font-medium text-[hsl(var(--secondary-foreground))] ml-1">AI‑Powered Resume Parser</span>
+            <span className="inline-flex items-center text-xs font-medium text-[hsl(var(--secondary-foreground))] ml-1">AI‑powered resume parser</span>
             <h1 className="mt-3 px-0 text-4xl font-semibold tracking-tight sm:text-5xl">
               Extract structured data from any resume PDF
             </h1>
@@ -20,7 +20,7 @@ export default async function Home() {
               Upload PDFs up to 10 MB. We parse with OpenAI and keep a complete history. Export JSON or revisit later.
             </p>
             <div className="mt-8 flex items-center gap-3">
-              <Link href={session ? "/dashboard" : "/signin"}>
+              <Link href={session ? "/dashboard" : "/signin"} prefetch>
                 <Button size="lg" variant="primary" className="gap-2">
                   <span>{session ? "Go to Dashboard" : "Sign in to get started"}</span>
                   <ArrowRight className="h-4 w-4" />
@@ -61,7 +61,7 @@ export default async function Home() {
               <h2 className="text-xl font-semibold">Ready to parse your first resume?</h2>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Sign in and upload a PDF—get structured JSON in seconds.</p>
             </div>
-            <Link href={session ? "/dashboard" : "/signin"}>
+            <Link href={session ? "/dashboard" : "/signin"} prefetch>
               <Button variant="primary" size="lg" className="gap-2 mt-3 sm:mt-0">
                 <span>{session ? "Go to Dashboard" : "Sign in"}</span>
                 <ArrowRight className="h-4 w-4" />
