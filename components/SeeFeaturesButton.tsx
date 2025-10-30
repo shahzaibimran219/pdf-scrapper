@@ -8,9 +8,9 @@ export default function SeeFeaturesButton() {
     const features = document.getElementById("features");
     if (features) {
       features.scrollIntoView({ behavior: "smooth", block: "center" });
-      features.classList.add("ring-2", "ring-[hsl(var(--primary))]", "transition-shadow");
+      features.classList.add("feature-highlight");
       setTimeout(() => {
-        features.classList.remove("ring-2", "ring-[hsl(var(--primary))]", "transition-shadow");
+        features.classList.remove("feature-highlight");
       }, 800);
     }
   }, []);
