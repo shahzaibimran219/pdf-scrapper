@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getServerSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import SeeFeaturesButton from "@/components/SeeFeaturesButton";
 
 export default async function Home() {
   const session = await getServerSession();
@@ -25,12 +26,7 @@ export default async function Home() {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <a href="#features">
-                <Button variant="secondary" size="lg" className="gap-2">
-                  <Sparkles className="h-4 w-4 text-[hsl(var(--primary))]" />
-                  See features
-                </Button>
-              </a>
+              <SeeFeaturesButton />
             </div>
           </div>
         </div>
