@@ -7,9 +7,10 @@ import { getStorageBucket, validateStoragePath } from "@/lib/storage";
 import { ensurePdfAndSize } from "@/lib/file-checks";
 import { EXTRACT_CONFIG } from "@/config/extract";
 import { computeSourceHash } from "@/lib/hash";
-import { extractResumeWithOpenAI } from "@/lib/extractors/openai";
+import { extractResumeWithOpenAI, extractResumeWithOpenAIVisionFromUrl, extractResumeFromTextWithOpenAI } from "@/lib/extractors/openai";
 import { prisma as prismaClient } from "@/lib/prisma";
 import { debitCreditsForResume } from "@/lib/credits";
+import { rasterizeFirstPageToPng, ocrPngWithTesseract } from "@/lib/ocr";
 
 export const runtime = "nodejs";
 
@@ -138,6 +139,67 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(errorEnvelope("OPENAI_ERROR", e?.message ?? "Failed to extract with OpenAI"), { status: 500 });
   }
 
+  // Fallback for image-only PDFs: if low signal, try Vision on rendered PNG; then OCR if still low
+  let tempPngPath: string | null = null;
+  try {
+    const keys = Object.keys(resumeData || {});
+    const lowSignal = !resumeData || keys.length < 3 || (!resumeData.profile && (!resumeData.experience && !resumeData.workExperiences));
+    console.log(`[EXTRACT] Low-signal check: keys=${keys.length}, lowSignal=${lowSignal}`);
+    if (lowSignal) {
+      console.log(`[EXTRACT] Rasterizing first page to PNG for Vision/OCR fallback…`);
+      const png = await rasterizeFirstPageToPng(bytes);
+      if (!png) {
+        console.warn(`[EXTRACT] Rasterization returned null; skipping Vision/OCR fallback.`);
+      } else {
+        // Upload PNG temporarily
+        const baseName = (storagePath.split("/").pop() ?? "uploaded").replace(/\.pdf$/i, "");
+        tempPngPath = storagePath.replace(/\.pdf$/i, "") + "-p1.png";
+        console.log(`[EXTRACT] Uploading temporary PNG: ${tempPngPath}`);
+        await supabase.storage.from(bucket).upload(tempPngPath, new Blob([png] as any, { type: "image/png" }), { upsert: true, contentType: "image/png" } as any);
+        const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(tempPngPath, 60 * 5);
+        if (signed?.signedUrl) {
+          console.log(`[EXTRACT] Vision fallback attempting with signed image URL`);
+          const visionJson = await extractResumeWithOpenAIVisionFromUrl(signed.signedUrl);
+          const vKeys = Object.keys(visionJson || {});
+          console.log(`[EXTRACT] Vision result keys=${vKeys.length}`);
+          if (vKeys.length > keys.length) {
+            console.log(`[EXTRACT] Vision improved result; adopting Vision JSON.`);
+            resumeData = visionJson;
+          } else {
+            console.log(`[EXTRACT] Vision did not improve; attempting OCR with Tesseract…`);
+            const ocrText = await ocrPngWithTesseract(png);
+            console.log(`[EXTRACT] OCR text length: ${ocrText ? ocrText.length : 0}`);
+            if (ocrText && ocrText.length > 200) {
+              const ocrJson = await extractResumeFromTextWithOpenAI(ocrText);
+              const oKeys = Object.keys(ocrJson || {});
+              console.log(`[EXTRACT] OCR→JSON keys=${oKeys.length}`);
+              if (oKeys.length > keys.length) {
+                console.log(`[EXTRACT] OCR→JSON improved result; adopting.`);
+                resumeData = ocrJson;
+              } else {
+                console.log(`[EXTRACT] OCR→JSON not better than initial; keeping initial JSON.`);
+              }
+            } else {
+              console.log(`[EXTRACT] OCR produced too little text; keeping initial JSON.`);
+            }
+          }
+        } else {
+          console.warn(`[EXTRACT] Failed to get signed URL for PNG; skipping Vision fallback.`);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[EXTRACT] vision/ocr fallback failed:", (e as any)?.message);
+  } finally {
+    // Best-effort delete temp png
+    if (tempPngPath) {
+      try {
+        console.log(`[EXTRACT] Removing temporary PNG: ${tempPngPath}`);
+        await supabase.storage.from(bucket).remove([tempPngPath]);
+      } catch {}
+    }
+  }
+
   await prisma.resume.update({
     where: { id: resume.id },
     data: {
@@ -163,7 +225,7 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
       schemaVersion: EXTRACT_CONFIG.SCHEMA_VERSION,
       snapshot: resumeData,
-      notes: "Initial extraction (text-only)",
+      notes: "Initial extraction (auto + vision fallback)",
     },
   });
 

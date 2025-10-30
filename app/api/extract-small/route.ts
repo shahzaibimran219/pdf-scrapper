@@ -5,9 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { EXTRACT_CONFIG } from "@/config/extract";
 import { ensurePdfAndSize } from "@/lib/file-checks";
 import { computeSourceHash } from "@/lib/hash";
-import { extractResumeWithOpenAI } from "@/lib/extractors/openai";
+import { extractResumeWithOpenAI, extractResumeFromTextWithOpenAI } from "@/lib/extractors/openai";
 import { prisma as prismaClient } from "@/lib/prisma";
 import { debitCreditsForResume } from "@/lib/credits";
+import { rasterizeFirstPageToPng, ocrPngWithTesseract } from "@/lib/ocr";
 
 export const runtime = "nodejs";
 
@@ -57,20 +58,10 @@ export async function POST(req: NextRequest) {
   try {
     if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLIC_KEY) {
       const user = await prismaClient.user.findUnique({ where: { id: session.user.id }, select: { credits: true, scrapingFrozen: true } });
-      
-      console.log(`[EXTRACT-SMALL] Credit check for user ${session.user.id}:`, {
-        currentCredits: user?.credits ?? 0,
-        required: 100,
-        scrapingFrozen: user?.scrapingFrozen ?? false,
-      });
-      
       if (user?.scrapingFrozen) {
-        console.log(`[EXTRACT-SMALL] BILLING_FROZEN: User ${session.user.id} subscription is frozen`);
         return NextResponse.json(errorEnvelope("BILLING_FROZEN", "Subscription inactive; please reactivate."), { status: 402 });
       }
-      
       if ((user?.credits ?? 0) < 100) {
-        console.log(`[EXTRACT-SMALL] INSUFFICIENT_CREDITS: User ${session.user.id} has ${user?.credits ?? 0} credits, needs 100`);
         return NextResponse.json(errorEnvelope("INSUFFICIENT_CREDITS", "Not enough credits (100 required)."), { status: 402 });
       }
     }
@@ -84,8 +75,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(errorEnvelope("OPENAI_ERROR", e?.message ?? "Failed to extract with OpenAI"), { status: 500 });
   }
 
+  // Low-signal fallback: rasterize first page and OCR with Tesseract, then JSON from text
+  try {
+    const keys = Object.keys(resumeData || {});
+    const lowSignal = !resumeData || keys.length < 3 || (!resumeData.profile && (!resumeData.experience && !resumeData.workExperiences));
+    if (lowSignal) {
+      console.log(`[EXTRACT-SMALL] Low-signal; rasterizing and OCR…`);
+      const png = await rasterizeFirstPageToPng(bytes);
+      if (png) {
+        const ocrText = await ocrPngWithTesseract(png);
+        console.log(`[EXTRACT-SMALL] OCR text length: ${ocrText ? ocrText.length : 0}`);
+        if (ocrText && ocrText.length > 200) {
+          const ocrJson = await extractResumeFromTextWithOpenAI(ocrText);
+          const oKeys = Object.keys(ocrJson || {});
+          console.log(`[EXTRACT-SMALL] OCR→JSON keys=${oKeys.length}`);
+          if (oKeys.length > keys.length) resumeData = ocrJson;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn(`[EXTRACT-SMALL] OCR fallback failed:`, (e as any)?.message);
+  }
+
   await prisma.resume.update({ where: { id: resume.id }, data: { resumeData, lastProcessStatus: "SUCCEEDED" } });
-  await prisma.resumeHistory.create({ data: { resumeId: resume.id, userId: session.user.id, schemaVersion: EXTRACT_CONFIG.SCHEMA_VERSION, snapshot: resumeData, notes: "Initial extraction (small-file, text-only)" } });
+  await prisma.resumeHistory.create({ data: { resumeId: resume.id, userId: session.user.id, schemaVersion: EXTRACT_CONFIG.SCHEMA_VERSION, snapshot: resumeData, notes: "Initial extraction (small-file, ocr fallback when needed)" } });
 
   // Optional billing post-debit
   try {
