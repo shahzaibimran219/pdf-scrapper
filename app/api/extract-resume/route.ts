@@ -13,18 +13,31 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Auth required" }, { status: 401 });
+      return NextResponse.json({ code: "UNAUTHORIZED", message: "Auth required" }, { status: 401 });
     }
 
     const body = await req.json().catch(() => null) as { images?: string[]; fileName?: string; fileSize?: number } | null;
     const images = body?.images ?? [];
     if (!Array.isArray(images) || images.length === 0) {
       console.warn("[EXTRACT-RESUME] No images provided");
-      return NextResponse.json({ error: "No images provided" }, { status: 400 });
+      return NextResponse.json({ code: "BAD_REQUEST", message: "No images provided" }, { status: 400 });
     }
     const fileName = body?.fileName || "uploaded.pdf";
     const fileSize = body?.fileSize || 0;
     console.log("[EXTRACT-RESUME] Received images:", images.length);
+
+    // Billing pre-check (require >=100 credits and not frozen)
+    try {
+      if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLIC_KEY) {
+        const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { credits: true, scrapingFrozen: true } });
+        if (user?.scrapingFrozen) {
+          return NextResponse.json({ code: "BILLING_FROZEN", message: "Subscription inactive; please reactivate." }, { status: 402 });
+        }
+        if ((user?.credits ?? 0) < 100) {
+          return NextResponse.json({ code: "INSUFFICIENT_CREDITS", message: "Not enough credits (100 required)." }, { status: 402 });
+        }
+      }
+    } catch {}
 
     // Compute a deterministic hash from images and user id (idempotency for re-uploads)
     const shasum = createHash("sha256");
