@@ -32,6 +32,7 @@ model User {
   metadata            Json?
 
   creditLedger CreditLedger[]
+  subscriptionCancellations SubscriptionCancellation[]
 }
 
 model Account {
@@ -146,6 +147,18 @@ enum CreditReason {
   MANUAL_ADJUST
   REFUND
   CORRECTION
+}
+
+model SubscriptionCancellation {
+  id           String   @id @default(uuid())
+  userId       String
+  planType     PlanType
+  reason       String
+  cancelledAt  DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, cancelledAt])
 }
 
 
