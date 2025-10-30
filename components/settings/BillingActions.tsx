@@ -128,10 +128,10 @@ export default function BillingActions() {
           </div>
         </div>
       )}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {planType === "PRO" && (
           <button
-            className="disabled:opacity-60 disabled:pointer-events-none inline-flex px-3 py-1 cursor-pointer text-sm font-medium rounded-md items-center gap-2 bg-orange-500 text-white hover:bg-orange-600 rounded-md focus:ring-orange-600"
+            className="disabled:opacity-60 disabled:pointer-events-none inline-flex px-3 py-2 cursor-pointer text-sm font-medium rounded-md items-center gap-2 bg-orange-500 text-white hover:bg-orange-600 rounded-md focus:ring-orange-600"
             disabled={downgradeScheduled || loading === "portal" || loading === "cancel" || loading === "downgrade"}
             onClick={scheduleDowngrade}
           >
@@ -144,15 +144,14 @@ export default function BillingActions() {
           </p>
         )}
         {planType !== "FREE" && (
-          <Button
-            type="button"
-            size="sm"
-            variant="danger"
+          <button
+
+            className="py-2 px-2 cursor-pointer disabled:opacity-60 disabled:pointer-events-none text-sm font-medium rounded-md items-center gap-2 bg-red-500 text-white hover:bg-red-600 rounded-md focus:ring-red-600"
             disabled={loading === "portal" || loading === "cancel"}
             onClick={() => setShowModal(true)}
           >
             Cancel Subscription
-          </Button>
+          </button>
         )}
         <Button size="sm" variant="ghost" onClick={openPortal} disabled={loading !== null} aria-busy={loading === "portal"}>
           {loading === "portal" ? (
