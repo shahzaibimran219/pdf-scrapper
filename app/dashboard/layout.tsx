@@ -1,5 +1,6 @@
 import { getServerSession } from "@/lib/auth";
 import { SidebarNav } from "@/components/dashboard/SidebarNav";
+import BillingProvider from "@/components/billing/BillingProvider";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession();
@@ -11,7 +12,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <aside className="rounded-xl  bg-[hsl(var(--card))] p-4 h-fit sticky top-20">
           <SidebarNav />
         </aside>
-        <section>{children}</section>
+        <section>
+          <BillingProvider>{children}</BillingProvider>
+        </section>
       </div>
     </div>
   );

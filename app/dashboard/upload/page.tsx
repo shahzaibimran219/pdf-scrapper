@@ -1,40 +1,12 @@
 import { Uploader } from "@/components/ui/uploader";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { getServerSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import BillingBanner from "@/components/billing/BillingBanner";
 
 export default async function UploadPage() {
-  const session = await getServerSession();
-  const user = session?.user?.id
-    ? await prisma.user.findUnique({ 
-        where: { id: session.user.id }, 
-        select: { planType: true, credits: true } 
-      })
-    : null;
-
-  const isLowCredits = (user?.credits ?? 0) < 100;
-  const needsRenewal = (user?.credits ?? 0) < 100 && user?.planType !== "FREE";
 
   return (
     <div className="space-y-6">
-      {needsRenewal && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-          <h3 className="text-sm font-medium text-red-800">⚠️ Subscription Renewal Required</h3>
-          <p className="text-sm text-red-700">
-            You have {user?.credits ?? 0} credits remaining. You need at least 100 credits to scrape PDFs. 
-            Please renew your subscription to continue using the service.
-          </p>
-        </div>
-      )}
-
-      {isLowCredits && !needsRenewal && (
-        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-          <h3 className="text-sm font-medium text-yellow-800">⚠️ Low Credits Warning</h3>
-          <p className="text-sm text-yellow-700">
-            You have {user?.credits ?? 0} credits remaining. Consider upgrading your plan for more credits.
-          </p>
-        </div>
-      )}
+      <BillingBanner />
 
       <div className="grid gap-6 md:grid-cols-2">
       <Card className="md:col-span-1">
