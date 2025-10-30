@@ -4,6 +4,7 @@ import { getServerSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { SignInButtons } from "@/components/auth/SignInButtons";
 import { ShieldCheck, Sparkles, Zap } from "lucide-react";
+import Footer from "@/components/Footer";
 
 export default async function SignInPage() {
   const session = await getServerSession();
@@ -11,7 +12,7 @@ export default async function SignInPage() {
   return (
     <main className="min-h-[calc(100vh-56px)] bg-gradient-to-b from-white to-zinc-50 relative">
       <div className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid gap-6 md:grid-cols-2 items-stretch">
+        <div className="grid items-stretch gap-6 md:grid-cols-2">
           {/* Left: Sign in form */}
           <div className="w-full relative">
             <div className="pointer-events-none absolute inset-0 -z-10 rounded-[28px] blur-2xl opacity-80" aria-hidden>
@@ -44,11 +45,11 @@ export default async function SignInPage() {
                 </div>
 
                 <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 text-xs text-zinc-600">
-                  Trouble signing in? <Link href="#" className="underline">Contact support</Link> or read our <Link href="#" className="underline">privacy</Link>.
+                  Trouble signing in? <Link href="#" className="underline">Contact support</Link> or read our <Link href="/privacy" className="underline">privacy</Link>.
                 </div>
 
                 <p className="text-xs text-zinc-500 text-center">
-                  By continuing, you agree to our <a className="underline" href="#">Terms</a> and <a className="underline" href="#">Privacy Policy</a>.
+                  By continuing, you agree to our <Link className="underline" href="/terms">Terms</Link> and <Link className="underline" href="/privacy">Privacy Policy</Link>.
                 </p>
               </div>
             </div>
@@ -87,6 +88,8 @@ export default async function SignInPage() {
             </div>
           </div>
         </div>
+
+        <Footer />
       </div>
     </main>
   );
