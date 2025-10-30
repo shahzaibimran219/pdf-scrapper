@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
-    "postinstall": "prisma generate"
+    "postinstall": "node -e \"const fs=require('fs'),p=require('path');fs.mkdirSync(p.join('public'),{recursive:true});const mjs=p.join('node_modules','pdfjs-dist','build','pdf.worker.mjs');const js=p.join('node_modules','pdfjs-dist','build','pdf.worker.js');if(fs.existsSync(mjs)){fs.copyFileSync(mjs,p.join('public','pdf.worker.mjs'));}if(fs.existsSync(js)){fs.copyFileSync(js,p.join('public','pdf.worker.js'));}\" && prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -19,6 +19,7 @@
     "@stripe/stripe-js": "^8.2.0",
     "@supabase/supabase-js": "^2.76.1",
     "@tanstack/react-table": "^8.21.3",
+    "canvas": "^3.2.0",
     "clsx": "^2.1.1",
     "jsondiffpatch": "^0.7.3",
     "lucide-react": "^0.548.0",
@@ -32,6 +33,7 @@
     "react-dom": "19.2.0",
     "sonner": "^2.0.7",
     "stripe": "^19.1.0",
+    "tesseract.js": "^6.0.1",
     "zod": "^4.1.12",
     "zustand": "^5.0.8"
   },

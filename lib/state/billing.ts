@@ -6,6 +6,7 @@ type BillingState = {
   credits: number;
   isLowCredits: boolean;
   needsRenewal: boolean;
+  downgradeScheduled?: boolean;
   setBilling: (p: Partial<BillingState>) => void;
   refresh: () => Promise<void>;
 };
@@ -15,6 +16,7 @@ export const useBillingStore = create<BillingState>((set) => ({
   credits: 0,
   isLowCredits: false,
   needsRenewal: false,
+  downgradeScheduled: false,
   setBilling: (p) => set(p as any),
   refresh: async () => {
     try {
@@ -26,6 +28,7 @@ export const useBillingStore = create<BillingState>((set) => ({
         credits: data.credits ?? 0,
         isLowCredits: data.isLowCredits ?? false,
         needsRenewal: data.needsRenewal ?? false,
+        downgradeScheduled: !!data.downgradeScheduled,
       });
     } catch {}
   },

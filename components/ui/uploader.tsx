@@ -2,6 +2,7 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabaseClient } from "@/lib/supabase-client";
+import { Loader2 } from "lucide-react";
 import { useBillingStore } from "@/lib/state/billing";
 import { UploadCloud } from "lucide-react";
 
@@ -196,7 +197,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
   };
 
   return (
-    <div className="rounded-2xl bg-[hsl(var(--card))] p-6 shadow-sm">
+    <div className="relative rounded-2xl bg-[hsl(var(--card))] p-6 shadow-sm overflow-hidden flex flex-col min-h-[min(300px,33vh)]">
       <div
         className="group relative rounded-xl p-8 text-center cursor-pointer transition-all bg-gradient-to-br from-[hsl(var(--muted))] to-transparent hover:shadow-md focus-visible:outline-none"
         onDragOver={(e) => e.preventDefault()}
@@ -232,15 +233,34 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
             <div ref={progressBarRef} className="h-2 rounded bg-[hsl(var(--primary))] transition-all" style={{ width: `0%` }} />
           </div>
           <div className="mt-2 flex items-center justify-between text-xs text-[hsl(var(--muted-foreground))]">
-            <span>
-              {stage === "uploading" && "Uploading PDF…"}
-              {stage === "uploadComplete" && "Upload complete. Preparing extraction…"}
-              {stage === "hashing" && "Computing file fingerprint…"}
-              {stage === "extracting" && "Scraping and analyzing your resume…"}
-              {stage === "saving" && "Saving results…"}
-              {stage === "redirecting" && "Opening result…"}
-            </span>
+            <span>Processing your resume</span>
             <span ref={percentRef}>0%</span>
+          </div>
+          {/* Animated engaging loader (three bouncing dots) */}
+          <div className="mt-3 flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+            <span className="inline-flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--primary))] animate-bounce [animation-delay:-0.2s]"></span>
+              <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--primary))] animate-bounce [animation-delay:-0.1s]"></span>
+              <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--primary))] animate-bounce"></span>
+            </span>
+            <span className="text-[hsl(var(--foreground))]">Sit tight—this can take a few seconds.</span>
+          </div>
+        </div>
+      )}
+
+      {/* Full overlay to engage user while uploading/extracting */}
+      {isUploading && (
+        <div className="absolute inset-0 min-h-[min(300px,33vh)] flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm">
+          <div className="text-center px-6 w-full">
+            <h3 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Processing your resume</h3>
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <span className="inline-flex items-center gap-1">
+                <span className="h-2.5 w-2.5 rounded-full bg-[hsl(var(--primary))] animate-bounce [animation-delay:-0.2s]"></span>
+                <span className="h-2.5 w-2.5 rounded-full bg-[hsl(var(--primary))] animate-bounce [animation-delay:-0.1s]"></span>
+                <span className="h-2.5 w-2.5 rounded-full bg-[hsl(var(--primary))] animate-bounce"></span>
+              </span>
+            </div>
+            <p className="mt-2 text-xs sm:text-sm text-[hsl(var(--muted-foreground))]">We’re extracting structured JSON from your PDF. This may take 10–20 seconds.</p>
           </div>
         </div>
       )}

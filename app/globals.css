@@ -82,3 +82,21 @@
   max-width: 72rem;
 }
 
+/* Feature highlight for scroll button UX */
+.feature-highlight {
+  box-shadow: 0 0 0 0 hsl(var(--primary)/0.0), 0 0 0 0 hsl(var(--primary)/0.0);
+  animation: featureGlow 1s ease-in-out 1;
+  border-radius: 0.75rem;
+}
+
+@keyframes featureGlow {
+  0% { box-shadow: 0 0 0 0 hsl(var(--primary)/0.0), 0 0 0 0 hsl(var(--primary)/0.0); }
+  30% { box-shadow: 0 0 0 6px hsl(var(--primary)/0.10), 0 6px 28px 0 hsl(var(--primary)/0.14); }
+  70% { box-shadow: 0 0 0 6px hsl(var(--primary)/0.12), 0 4px 18px 0 hsl(var(--primary)/0.10); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--primary)/0.0), 0 0 0 0 hsl(var(--primary)/0.0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-highlight { animation: none; }
+}
+

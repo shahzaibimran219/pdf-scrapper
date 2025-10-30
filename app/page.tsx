@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getServerSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import SeeFeaturesButton from "@/components/SeeFeaturesButton";
 
 export default async function Home() {
   const session = await getServerSession();
@@ -19,18 +20,13 @@ export default async function Home() {
               Upload PDFs up to 10 MB. We parse with OpenAI and keep a complete history. Export JSON or revisit later.
             </p>
             <div className="mt-8 flex items-center gap-3">
-              <Link href={session ? "/dashboard" : "/signin"}>
+              <Link href={session ? "/dashboard" : "/signin"} prefetch>
                 <Button size="lg" variant="primary" className="gap-2">
                   <span>{session ? "Go to Dashboard" : "Sign in to get started"}</span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <a href="#features">
-                <Button variant="secondary" size="lg" className="gap-2">
-                  <Sparkles className="h-4 w-4 text-[hsl(var(--primary))]" />
-                  See features
-                </Button>
-              </a>
+              <SeeFeaturesButton />
             </div>
           </div>
         </div>
@@ -65,7 +61,7 @@ export default async function Home() {
               <h2 className="text-xl font-semibold">Ready to parse your first resume?</h2>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Sign in and upload a PDF—get structured JSON in seconds.</p>
             </div>
-            <Link href={session ? "/dashboard" : "/signin"}>
+            <Link href={session ? "/dashboard" : "/signin"} prefetch>
               <Button variant="primary" size="lg" className="gap-2 mt-3 sm:mt-0">
                 <span>{session ? "Go to Dashboard" : "Sign in"}</span>
                 <ArrowRight className="h-4 w-4" />
