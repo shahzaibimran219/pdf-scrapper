@@ -13,15 +13,15 @@ export default async function SignInPage() {
       <div className="mx-auto max-w-6xl px-6 py-16">
         <div className="grid items-center gap-10 md:grid-cols-2">
           {/* Left: Sign in form */}
-          <div className="mx-auto w-full max-w-md">
+          <div className="mx-auto w-full max-w-md ">
             <div className="mb-8 text-center">
               <h1 className="mt-6 text-2xl font-semibold tracking-tight">Welcome back</h1>
               <p className="mt-1 text-sm text-zinc-600">Sign in to continue</p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-zinc-100 bg-white/90 backdrop-blur-lg p-10 shadow-lg flex flex-col items-center">
               <SignInButtons />
-              <p className="mt-4 text-xs text-zinc-500">
+              <p className="mt-6 text-xs text-zinc-500 text-center">
                 By continuing, you agree to our <a className="underline" href="#">Terms</a> and <a className="underline" href="#">Privacy Policy</a>.
               </p>
             </div>

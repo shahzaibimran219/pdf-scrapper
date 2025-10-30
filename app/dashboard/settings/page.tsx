@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUserBilling } from "@/lib/billing/user";
 import BillingActions from "@/components/settings/BillingActions";
 import { redirect } from "next/navigation";
+ 
+import PlanCardGrid from "@/components/settings/PlanCardGrid";
 
 export default async function DashboardSettingsPage({ searchParams }: { searchParams: Promise<{ checkout?: string }> }) {
   const billing = await getCurrentUserBilling();
@@ -47,6 +49,9 @@ export default async function DashboardSettingsPage({ searchParams }: { searchPa
           </p>
         </div>
       )}
+
+ 
+      <PlanCardGrid billing={billing ?? {planType: "FREE", credits: 0}} />
 
       <div className="rounded-xl border bg-[hsl(var(--card))] p-5 shadow-sm">
         <h2 className="text-lg font-medium">Subscription</h2>

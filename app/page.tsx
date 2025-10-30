@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Sparkles } from "lucide-react";
 
 export default async function Home() {
   const session = await getServerSession();
@@ -7,28 +9,27 @@ export default async function Home() {
     <main>
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(1000px_400px_at_10%_-10%,#dbeafe,transparent),radial-gradient(800px_300px_at_90%_-20%,#f5f5f4,transparent)]" />
-        <div className="container py-24 sm:py-28">
+        <div className="container py-24 sm:py-16">
           <div className="max-w-2xl">
-            <span className="inline-flex items-center rounded-full bg-[hsl(var(--secondary))] px-3 py-1 text-xs font-medium text-[hsl(var(--secondary-foreground))]">AI‑powered resume parser</span>
-            <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
+            <span className="inline-flex items-center text-xs font-medium text-[hsl(var(--secondary-foreground))] ml-1">AI‑powered resume parser</span>
+            <h1 className="mt-3 px-0 text-4xl font-semibold tracking-tight sm:text-5xl">
               Extract structured data from any resume PDF
             </h1>
             <p className="mt-4 text-[hsl(var(--muted-foreground))]">
               Upload PDFs up to 10 MB. We parse with OpenAI and keep a complete history. Export JSON or revisit later.
             </p>
             <div className="mt-8 flex items-center gap-3">
-              <Link
-                href={session ? "/dashboard" : "/signin"}
-                className="rounded-md bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-5 py-3 text-sm font-medium hover:opacity-90"
-              >
-                {session ? "Go to Dashboard" : "Sign in to get started"}
+              <Link href={session ? "/dashboard" : "/signin"}>
+                <Button size="lg" variant="primary" className="gap-2">
+                  <span>{session ? "Go to Dashboard" : "Sign in to get started"}</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               </Link>
-              <a
-                href="#features"
-                className="rounded-md border border-[hsl(var(--border))] px-5 py-3 text-sm font-medium hover:bg-[hsl(var(--muted))]"
-              >
-                See features
+              <a href="#features">
+                <Button variant="secondary" size="lg" className="gap-2">
+                  <Sparkles className="h-4 w-4 text-[hsl(var(--primary))]" />
+                  See features
+                </Button>
               </a>
             </div>
           </div>
@@ -64,11 +65,11 @@ export default async function Home() {
               <h2 className="text-xl font-semibold">Ready to parse your first resume?</h2>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Sign in and upload a PDF—get structured JSON in seconds.</p>
             </div>
-            <Link
-              href={session ? "/dashboard" : "/signin"}
-              className="rounded-md bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-5 py-3 text-sm font-medium hover:opacity-90"
-            >
-              {session ? "Go to Dashboard" : "Sign in"}
+            <Link href={session ? "/dashboard" : "/signin"}>
+              <Button variant="primary" size="lg" className="gap-2 mt-3 sm:mt-0">
+                <span>{session ? "Go to Dashboard" : "Sign in"}</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
             </Link>
           </div>
         </div>
