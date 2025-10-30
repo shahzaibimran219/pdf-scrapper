@@ -16,20 +16,28 @@ export default function HistoryFilters({ initialQ = "", initialStatus = "" }: Pr
   const [q, setQ] = useState(initialQ);
   const [status, setStatus] = useState(initialStatus);
 
-  // Debounced push for search
+  // Debounced push for search only
   useEffect(() => {
     const id = setTimeout(() => {
       const sp = new URLSearchParams(params?.toString());
       if (q) sp.set("q", q); else sp.delete("q");
       if (status) sp.set("status", status); else sp.delete("status");
       router.replace(`${pathname}?${sp.toString()}`);
-    }, 400);
+    }, 350);
     return () => clearTimeout(id);
-  }, [q, status]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
 
   const onStatus = useCallback((next: string) => {
-    setStatus((cur) => (cur === next ? "" : next));
-  }, []);
+    setStatus((cur) => {
+      const nextStatus = cur === next ? "" : next;
+      const sp = new URLSearchParams(params?.toString());
+      if (q) sp.set("q", q); else sp.delete("q");
+      if (nextStatus) sp.set("status", nextStatus); else sp.delete("status");
+      router.replace(`${pathname}?${sp.toString()}`);
+      return nextStatus;
+    });
+  }, [params, pathname, q, router]);
 
   const statusDefs = useMemo(
     () => [
