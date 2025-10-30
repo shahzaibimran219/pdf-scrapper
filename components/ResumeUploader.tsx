@@ -3,9 +3,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UploadCloud, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { useBillingStore } from "@/lib/state/billing";
 
 export default function ResumeUploader() {
   const router = useRouter();
+  const credits = useBillingStore((s) => s.credits);
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState<"idle" | "render" | "upload" | "parse">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +40,13 @@ export default function ResumeUploader() {
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if ((credits ?? 0) < 100) {
+      toast.error("Insufficient credits! You need at least 100 credits to scrape a PDF.", {
+        duration: 5000,
+        action: { label: "Upgrade", onClick: () => router.push("/dashboard/settings") },
+      });
+      return;
+    }
     setError(null);
     setLoading(true);
     setStage("render");
