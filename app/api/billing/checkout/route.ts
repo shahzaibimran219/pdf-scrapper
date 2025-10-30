@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   // Ensure we have a DB user and a valid Stripe customer (self-healing)
   const existingById = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, email: true, name: true, stripeCustomerId: true, planType: true, credits: true },
+    select: { id: true, email: true, name: true, stripeCustomerId: true, stripeSubscriptionId: true, planType: true, credits: true },
   });
   const emailFromSession = session.user.email ?? undefined;
   let dbUser = existingById ?? (emailFromSession
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         where: { email: emailFromSession },
         update: {},
         create: { email: emailFromSession, name: session.user.name ?? null },
-        select: { id: true, email: true, name: true, stripeCustomerId: true, planType: true, credits: true },
+        select: { id: true, email: true, name: true, stripeCustomerId: true, stripeSubscriptionId: true, planType: true, credits: true },
       })
     : null);
   if (!dbUser) return NextResponse.json(errorEnvelope("BAD_REQUEST", "User email required"), { status: 400 });
@@ -55,6 +55,23 @@ export async function POST(req: NextRequest) {
   if (currentPlan === "PRO" && planRequested === "Pro" && currentCredits > 0) {
     return NextResponse.json(errorEnvelope("PRO_ACTIVE", "You still have Pro credits available"), { status: 400 });
   }
+    // Cancel existing Stripe subscription (Basic) when upgrading to Pro
+    if (currentPlan === "BASIC" && planRequested === "Pro" && dbUser.stripeSubscriptionId) {
+      try {
+        await stripe.subscriptions.cancel(dbUser.stripeSubscriptionId, {
+          invoice_now: false,
+          prorate: false,
+        });
+        await prisma.user.update({
+          where: { id: dbUser.id },
+          data: { stripeSubscriptionId: null }
+        });
+        console.log(`[CHECKOUT] Cancelled previous Basic sub before Pro upgrade for ${dbUser.id}`);
+      } catch (err) {
+        console.error("Failed to cancel previous subscription on upgrade", err);
+        return NextResponse.json(errorEnvelope("STRIPE_CANCEL_PREV_FAILED", "Failed to cancel current plan during upgrade."), { status: 500 });
+      }
+    }
 
   let customerId = dbUser.stripeCustomerId ?? null;
   if (customerId) {
@@ -76,7 +93,43 @@ export async function POST(req: NextRequest) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { stripeCustomerId: customerId } });
   }
 
-  // Create custom checkout session with price_data instead of price ID
+  // If upgrading from Basic -> Pro and an active subscription exists, update it IN PLACE
+  if (currentPlan === "BASIC" && planRequested === "Pro" && dbUser.stripeSubscriptionId) {
+    try {
+      // Retrieve existing subscription to get the item id
+      const sub = await stripe.subscriptions.retrieve(dbUser.stripeSubscriptionId, { expand: ["items.data.price"] });
+      const item = sub.items.data[0];
+      // Create a new Price for Pro dynamically (test mode)
+      const newPrice = await stripe.prices.create({
+        currency: "usd",
+        unit_amount: body.amount,
+        recurring: { interval: "month" },
+        product_data: { name: `Pro Plan - PDF Scraper` },
+      });
+      // Update subscription item to the new price (upgrade in-place)
+      await stripe.subscriptionItems.update(item.id, { price: newPrice.id, proration_behavior: "create_prorations" });
+
+      // Persist a hint for the webhook to attribute credits correctly
+      await prisma.user.update({
+        where: { id: dbUser.id },
+        data: {
+          metadata: {
+            lastCheckoutSessionId: null,
+            lastCheckoutPlan: body.plan,
+            lastCheckoutCredits: body.credits,
+          } as any,
+        },
+      });
+
+      console.log(`[CHECKOUT-UPGRADE] Upgraded subscription in-place for user ${dbUser.id} → Pro`);
+      return NextResponse.json({ upgraded: true });
+    } catch (e) {
+      console.error("[CHECKOUT-UPGRADE] Failed to upgrade in place, falling back to Checkout", e);
+      // Fallback to Checkout creation below
+    }
+  }
+
+  // Create custom checkout session with price_data instead of price ID (new subscription)
   const sessionCheckout = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,

@@ -35,8 +35,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    if (["invoice.paid", "invoice.payment_succeeded", "invoice_payment.paid"].includes(event.type)) {
-      console.log(`[WEBHOOK] Processing invoice.paid event`);
+    // if (["invoice.paid", "invoice.payment_succeeded", "invoice_payment.paid"].includes(event.type)) {
+      if (event.type === "invoice.paid") {  
+    console.log(`[WEBHOOK] Processing invoice.paid event`);
       console.log("Event:", event);
       let invoice = event.data.object;
       // Support the new invoice_payment.paid payload which references an invoice id

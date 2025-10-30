@@ -24,12 +24,12 @@ export default async function DashboardSettingsPage({ searchParams }: { searchPa
 
   return (
     <div className="space-y-6">
-      {params.checkout === "success" && (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-          <h3 className="text-sm font-medium text-green-800">Payment Successful!</h3>
-          <p className="text-sm text-green-700">Your subscription is being processed. Please refresh the page in a moment.</p>
-        </div>
-      )}
+        {params.checkout === "success" && (
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+            <h2 className="text-lg font-medium text-green-800">Payment Successful!</h2>
+            <h5 className="text-md text-green-700">Your subscription is being processed. Please refresh the page in a moment.</h5>
+          </div>
+        )}
       
       {needsRenewal && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4">

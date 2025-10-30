@@ -37,7 +37,12 @@ export default function PlanCard({ plan, billing }: { plan: Plan; billing: Billi
         return;
       }
       const data = await res.json();
-      window.location.href = data.sessionUrl;
+      if (data?.sessionUrl) {
+        window.location.href = data.sessionUrl;
+      } else if (data?.upgraded) {
+        // In-place upgrade: refresh to reflect webhook-updated billing
+        window.location.reload();
+      }
     } finally {
       setLoading(false);
     }
