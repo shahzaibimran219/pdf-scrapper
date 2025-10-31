@@ -138,6 +138,40 @@ export async function POST(req: NextRequest) {
       const currentCredits = user.credits || 0;
       const totalCreditsToAdd = creditsToAdd + Math.max(0, currentCredits);
       
+      // Get subscription dates from subscription object if available
+      let subscriptionStartDate: Date | null = null;
+      let subscriptionEndDate: Date | null = null;
+      if (subscriptionId) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          // Type assertion: Stripe subscription has these properties
+          const subAny = sub as any;
+          if (subAny.current_period_start && subAny.current_period_end) {
+            subscriptionStartDate = new Date(subAny.current_period_start * 1000);
+            subscriptionEndDate = new Date(subAny.current_period_end * 1000);
+            console.log(`[WEBHOOK] Subscription dates:`, {
+              start: subscriptionStartDate.toISOString(),
+              end: subscriptionEndDate.toISOString(),
+            });
+          }
+        } catch (e) {
+          console.warn(`[WEBHOOK] Could not retrieve subscription ${subscriptionId} for dates:`, e);
+          // Fallback: use invoice period if available
+          const invoiceAny = invoice as any;
+          if (invoiceAny.period_start && invoiceAny.period_end) {
+            subscriptionStartDate = new Date(invoiceAny.period_start * 1000);
+            subscriptionEndDate = new Date(invoiceAny.period_end * 1000);
+          }
+        }
+      } else {
+        // Fallback to invoice period
+        const invoiceAny = invoice as any;
+        if (invoiceAny.period_start && invoiceAny.period_end) {
+          subscriptionStartDate = new Date(invoiceAny.period_start * 1000);
+          subscriptionEndDate = new Date(invoiceAny.period_end * 1000);
+        }
+      }
+      
       console.log(`[WEBHOOK] Credit calculation:`, {
         currentCredits,
         newCredits: creditsToAdd,
@@ -145,7 +179,7 @@ export async function POST(req: NextRequest) {
         planType,
       });
       
-      // Update user plan and set total credits
+      // Update user plan and set total credits with subscription dates
       await prisma.user.update({ 
         where: { id: user.id }, 
         data: { 
@@ -153,6 +187,8 @@ export async function POST(req: NextRequest) {
           credits: totalCreditsToAdd,
           scrapingFrozen: false, 
           ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
+          ...(subscriptionStartDate ? { subscriptionStartDate } : {}),
+          ...(subscriptionEndDate ? { subscriptionEndDate } : {}),
         } 
       });
       
@@ -219,6 +255,17 @@ export async function POST(req: NextRequest) {
       const prevPlan = user.planType;
       const updateData: any = { stripeSubscriptionId: sub.id };
       if (planType) updateData.planType = planType;
+      
+      // Update subscription dates from subscription object
+      const subAny = sub as any;
+      if (subAny.current_period_start && subAny.current_period_end) {
+        updateData.subscriptionStartDate = new Date(subAny.current_period_start * 1000);
+        updateData.subscriptionEndDate = new Date(subAny.current_period_end * 1000);
+        console.log(`[WEBHOOK] Updated subscription dates:`, {
+          start: updateData.subscriptionStartDate.toISOString(),
+          end: updateData.subscriptionEndDate.toISOString(),
+        });
+      }
 
       await prisma.user.update({ where: { id: user.id }, data: updateData });
       console.log(`[WEBHOOK] User ${user.id} plan updated: ${prevPlan} → ${planType ?? prevPlan}`);

@@ -12,6 +12,7 @@ export default function ResumeUploader() {
   const [stage, setStage] = useState<"idle" | "render" | "upload" | "parse">("idle");
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [tipIdx, setTipIdx] = useState(0);
 
   const tips = useMemo(() => [
@@ -113,16 +114,32 @@ export default function ResumeUploader() {
         </div>
       )}
 
-      <div className="group relative rounded-xl p-8 text-center cursor-pointer transition-all bg-gradient-to-br from-[hsl(var(--muted))] to-transparent hover:shadow-md focus-visible:outline-none">
+      <div 
+        className="group relative rounded-xl p-8 text-center cursor-pointer transition-all bg-gradient-to-br from-[hsl(var(--muted))] to-transparent hover:shadow-md focus-visible:outline-none"
+        onClick={() => !loading && inputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (!loading && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
+      >
+        <input 
+          ref={inputRef}
+          type="file" 
+          accept="application/pdf" 
+          onChange={handleFile} 
+          className="hidden" 
+          disabled={loading}
+          aria-label="Upload PDF resume"
+        />
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] shadow-sm">
           <UploadCloud width="20" height="20" />
         </div>
         <p className="text-sm">
-          <span className="font-medium">Drag & drop</span> your PDF here or
-          <label className="ml-1 underline cursor-pointer">
-            browse
-            <input type="file" accept="application/pdf" onChange={handleFile} className="hidden" disabled={loading} />
-          </label>
+          <span className="font-medium">Drag & drop</span> your PDF here or <span className="underline">browse</span>
         </p>
         <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">PDF up to 10 MB • Works for text and scanned PDFs</p>
       </div>

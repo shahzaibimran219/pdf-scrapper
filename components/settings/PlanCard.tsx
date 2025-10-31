@@ -79,7 +79,7 @@ export default function PlanCard({ plan, billing }: { plan: Plan; billing: Billi
           <span className="ml-2 px-2 py-0.5 rounded bg-green-500 text-xs font-medium text-white">Current</span>
         )}
       </div>
-      <div className="text-2xl font-bold mb-1">${plan.price}<span className="text-base text-zinc-500">/once</span></div>
+      <div className="text-2xl font-bold mb-1">${plan.price}<span className="text-base text-zinc-500">/month</span></div>
       <div className="mb-2 text-sm text-zinc-600">{plan.credits.toLocaleString()} credits</div>
       <div className="mb-3 text-[0.97rem] text-zinc-500">{plan.desc}</div>
       <ul className="pl-4 mb-2 text-xs list-disc text-zinc-400">

@@ -2,8 +2,9 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ExportCopyButtons } from "@/components/resumes/ExportCopyButtons";
-import { ArrowLeft, FileX } from "lucide-react";
+import { ArrowLeft, FileX, AlertTriangle } from "lucide-react";
 import { CollapsibleJson } from "@/components/json/CollapsibleJson";
+import { calculateMissingDataPercentage } from "@/lib/resume-utils";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -65,6 +66,44 @@ export default async function ResumeDetailPage({ params }: Props) {
       </div>
       <h1 className="text-3xl font-semibold tracking-tight mt-4">{profile?.name ? `${profile.name}${profile?.surname ? ` ${profile.surname}` : ""}` : resume.fileName}</h1>
       <p className="text-sm text-[hsl(var(--muted-foreground))]">Uploaded {new Date(resume.uploadedAt).toLocaleString()}</p>
+
+      {(() => {
+        const missingPercentage = calculateMissingDataPercentage(resume.resumeData);
+        if (missingPercentage > 60) {
+          return (
+            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-amber-800">Didn't find much data, are you sure you uploaded a resume?</h3>
+                  <p className="text-sm text-amber-700 mt-1">
+                    We were only able to extract {100 - missingPercentage}% of the expected resume information. 
+                    This might happen if the PDF contains mostly images, scanned documents with poor quality, or isn't actually a resume.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {resume.storagePath ? (
+                      <form action={`/api/extract`} method="post" className="inline">
+                        <input type="hidden" name="storagePath" value={resume.storagePath} />
+                        <input type="hidden" name="sourceHash" value={resume.sourceHash} />
+                        <Button type="submit" variant="secondary" size="sm">
+                          Re-run extraction
+                        </Button>
+                      </form>
+                    ) : (
+                      <Link href="/dashboard/upload">
+                        <Button variant="secondary" size="sm">
+                          Upload a new resume
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       <div className="mt-8 grid gap-6 md:grid-cols-3">
         <div className="rounded-xl border bg-[hsl(var(--card))] p-5 shadow-sm md:col-span-2">
