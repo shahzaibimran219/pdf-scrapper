@@ -41,6 +41,13 @@ export default function ResumeUploader() {
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Enforce hard 10MB limit client-side
+    const MAX_BYTES = 10 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      toast.error("File too large. Max size is 10 MB.");
+      e.target.value = "";
+      return;
+    }
     if ((credits ?? 0) < 100) {
       toast.error("Insufficient credits! You need at least 100 credits to scrape a PDF.", {
         duration: 5000,

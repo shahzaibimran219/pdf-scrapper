@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { signOut } from "next-auth/react";
 import { Upload, History, LogOut, Settings } from "lucide-react";
 
 const items = [
@@ -41,11 +42,14 @@ export function SidebarNav() {
       </nav>
       <div className="mt-auto pt-6 ">
         <h3 className="text-xs font-medium tracking-wide text-[hsl(var(--muted-foreground))] mb-2 ">Other</h3>
-        <form action="/api/auth/signout" method="post">
-          <Button type="submit" variant="ghost" className="w-full justify-start text-red-600 hover:bg-red-50">
-            <LogOut className="mr-2 h-4 w-4" /> Log out
-          </Button>
-        </form>
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full justify-start text-red-600 hover:bg-red-50"
+          onClick={() => signOut({ callbackUrl: "/" })}
+        >
+          <LogOut className="mr-2 h-4 w-4" /> Log out
+        </Button>
       </div>
     </div>
   );

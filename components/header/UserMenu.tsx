@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
 
 type Props = {
@@ -44,12 +45,15 @@ export function UserMenu({ email, image }: Props) {
           </div>
           <div className="p-1">
             <Link href="/dashboard" className="block rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100">Dashboard</Link>
-            <form action="/api/auth/signout" method="post" className="flex cursor-pointer items-center gap-2">
-              <Button type="submit" variant="ghost" className="w-full justify-start text-left px-3 py-2 h-auto text-zinc-700">
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign out
-              </Button>
-            </form>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-start text-left px-3 py-2 h-auto text-zinc-700"
+              onClick={() => signOut({ callbackUrl: "/" })}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
+            </Button>
           </div>
         </div>
       )}
