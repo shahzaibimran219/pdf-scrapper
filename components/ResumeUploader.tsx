@@ -31,8 +31,10 @@ export default function ResumeUploader() {
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState<"idle" | "render" | "upload" | "parse">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const [tipIdx, setTipIdx] = useState(0);
 
   const tips = useMemo(() => [
@@ -58,14 +60,16 @@ export default function ResumeUploader() {
     return "Parsing your resume with AI…";
   }, [loading, stage]);
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function processFile(file: File) {
     if (!file) return;
     // Enforce hard 10MB limit client-side
     const MAX_BYTES = 10 * 1024 * 1024;
     if (file.size > MAX_BYTES) {
       toast.error("File too large. Max size is 10 MB.");
-      e.target.value = "";
+      return;
+    }
+    if (file.type !== "application/pdf") {
+      toast.error("Only PDF files are allowed");
       return;
     }
     if ((credits ?? 0) < 100) {
@@ -124,6 +128,46 @@ export default function ResumeUploader() {
     }
   }
 
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+    // Reset input to allow same file to be selected again
+    if (e.target) e.target.value = "";
+  }
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!loading) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the drop zone itself
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (loading) return;
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
   return (
     <div className="rounded-2xl bg-[hsl(var(--card))] p-6 shadow-sm relative" ref={containerRef}>
       {loading && (
@@ -148,8 +192,17 @@ export default function ResumeUploader() {
       )}
 
       <div 
-        className="group relative rounded-xl p-8 text-center cursor-pointer transition-all bg-gradient-to-br from-[hsl(var(--muted))] to-transparent hover:shadow-md focus-visible:outline-none"
+        ref={dropZoneRef}
+        className={`group relative rounded-xl p-8 text-center cursor-pointer transition-all bg-gradient-to-br from-[hsl(var(--muted))] to-transparent focus-visible:outline-none ${
+          isDragging 
+            ? "border-2 border-dashed border-[hsl(var(--primary))] bg-[hsl(var(--primary))/0.05] shadow-lg scale-[1.02]" 
+            : "border-2 border-dashed border-transparent hover:border-[hsl(var(--border))] hover:shadow-md"
+        }`}
         onClick={() => !loading && inputRef.current?.click()}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
@@ -168,13 +221,28 @@ export default function ResumeUploader() {
           disabled={loading}
           aria-label="Upload PDF resume"
         />
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] shadow-sm">
-          <UploadCloud width="20" height="20" />
+        <div className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full transition-all ${
+          isDragging 
+            ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] scale-110" 
+            : "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))]"
+        } shadow-sm`}>
+          <UploadCloud className={`h-5 w-5 transition-transform ${isDragging ? "animate-bounce" : ""}`} />
         </div>
-        <p className="text-sm">
-          <span className="font-medium">Drag & drop</span> your PDF here or <span className="underline">browse</span>
-        </p>
-        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">PDF up to 10 MB • Works for text and scanned PDFs</p>
+        {isDragging ? (
+          <>
+            <p className="text-base font-semibold text-[hsl(var(--primary))]">
+              Drop your PDF file here
+            </p>
+            <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Release to upload</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm">
+              <span className="font-medium">Drag & drop</span> your PDF here or <span className="underline">browse</span>
+            </p>
+            <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">PDF up to 10 MB • Works for text and scanned PDFs</p>
+          </>
+        )}
       </div>
 
       {error && (
