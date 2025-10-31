@@ -2,15 +2,20 @@ import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { getServerSession } from "@/lib/auth";
 import HistoryFilters from "@/components/history/HistoryFilters";
+import Pagination from "@/components/history/Pagination";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string }> }) {
+const ITEMS_PER_PAGE = 10;
+
+export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; page?: string }> }) {
   const session = await getServerSession();
   const sp = await searchParams;
   const q = sp?.q?.toString()?.trim() ?? "";
   const status = sp?.status?.toString()?.trim().toUpperCase();
+  const page = Math.max(1, parseInt(sp?.page?.toString() ?? "1", 10));
 
   const where: any = session?.user?.id ? { userId: session.user.id } : undefined;
   if (where) {
@@ -23,12 +28,15 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
         prisma.resume.findMany({
           where,
           orderBy: { uploadedAt: "desc" },
-          take: 50,
+          skip: (page - 1) * ITEMS_PER_PAGE,
+          take: ITEMS_PER_PAGE,
           select: { id: true, fileName: true, uploadedAt: true, fileSize: true, lastProcessStatus: true },
         }),
         prisma.resume.count({ where }),
       ])
     : [[], 0];
+
+  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   function formatSize(bytes?: number | null) {
     const b = bytes ?? 0;
@@ -78,6 +86,16 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
           </tbody>
         </table>
       </div>
+      {totalPages > 0 && (
+        <Suspense fallback={<div className="px-4 py-3 border-t bg-[hsl(var(--popover))] text-xs text-[hsl(var(--muted-foreground))]">Loading pagination...</div>}>
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={total}
+            itemsPerPage={ITEMS_PER_PAGE}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
