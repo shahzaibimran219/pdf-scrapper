@@ -1,8 +1,13 @@
- 
 import { getCurrentUserBilling } from "@/lib/billing/user";
 import BillingActions from "@/components/settings/BillingActions";
- import PlanCardGrid from "@/components/settings/PlanCardGrid";
-  
+import PlanCardGrid from "@/components/settings/PlanCardGrid";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Settings - Dashboard | PDF Resume Scrapper",
+  description: "Manage your subscription, billing, and account settings",
+};
+
 export default async function DashboardSettingsPage() {
   const billing = await getCurrentUserBilling();
  

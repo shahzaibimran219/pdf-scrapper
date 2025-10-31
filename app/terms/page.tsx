@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service - PDF Resume Scrapper",
+  description: "Terms of service for PDF Resume Scrapper. Read our acceptable use and billing terms.",
+};
+
 export default function TermsPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">

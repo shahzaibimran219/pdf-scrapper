@@ -4,8 +4,15 @@ import { getServerSession } from "@/lib/auth";
 import HistoryFilters from "@/components/history/HistoryFilters";
 import Pagination from "@/components/history/Pagination";
 import { Suspense } from "react";
+import Link from "next/link";
+import type { Metadata } from "next";
 import type { ResumeListItem } from "@/types/resume";
 import { Prisma } from "@prisma/client";
+
+export const metadata: Metadata = {
+  title: "Resume History - Dashboard | PDF Resume Scrapper",
+  description: "View your uploaded resume history and extraction results",
+};
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -68,7 +75,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
             {resumes.map((r) => (
               <tr key={r.id} className="hover:bg-[hsl(var(--muted))]/50 transition-colors">
                 <td className="py-3 pl-5 pr-4">
-                  <a href={`/resumes/${r.id}`} className="font-medium hover:underline">{r.fileName}</a>
+                  <Link href={`/resumes/${r.id}`} className="font-medium hover:underline">{r.fileName}</Link>
                 </td>
                 <td className="py-3 px-4 whitespace-nowrap">{new Date(r.uploadedAt).toLocaleString()}</td>
                 <td className="py-3 px-4 whitespace-nowrap">{formatSize(r.fileSize)}</td>
@@ -78,7 +85,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                   {r.lastProcessStatus === "FAILED" && <Badge intent="danger">Failed</Badge>}
                 </td>
                 <td className="py-3 pr-5 pl-4 text-right">
-                  <a href={`/resumes/${r.id}`} className="rounded-md border px-3 py-1.5 hover:bg-[hsl(var(--muted))]">Open</a>
+                  <Link href={`/resumes/${r.id}`} className="rounded-md border px-3 py-1.5 hover:bg-[hsl(var(--muted))]">Open</Link>
                 </td>
               </tr>
             ))}

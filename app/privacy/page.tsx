@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy - PDF Resume Scrapper",
+  description: "Privacy policy for PDF Resume Scrapper. Learn how we handle your data and files.",
+};
+
 export default function PrivacyPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">

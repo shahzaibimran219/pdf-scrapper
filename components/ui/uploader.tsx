@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useBillingStore } from "@/lib/state/billing";
 import { UploadCloud } from "lucide-react";
@@ -9,6 +10,7 @@ type Props = {
 };
 
 export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
+  const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
   // Avoid frequent re-renders: update progress via DOM refs instead of state
   const progressBarRef = useRef<HTMLDivElement>(null);
@@ -44,7 +46,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
           duration: 5000,
           action: {
             label: "Upgrade",
-            onClick: () => (window.location.href = "/dashboard/settings"),
+            onClick: () => router.push("/dashboard/settings"),
           },
         });
         return;
@@ -79,7 +81,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
                   const data = JSON.parse(xhr.responseText || "{}") as { resumeId?: string };
                   toast.success("Extraction complete");
                   setStageSafe("redirecting");
-                  window.location.href = `/resumes/${data.resumeId}`;
+                  if (data.resumeId) router.push(`/resumes/${data.resumeId}`);
                   resolve();
                 } catch {
                   reject(new Error("Failed to parse response"));
@@ -156,7 +158,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
             duration: 5000,
             action: {
               label: "Upgrade",
-              onClick: () => window.location.href = "/dashboard/settings"
+              onClick: () => router.push("/dashboard/settings")
             }
           });
         } else {
@@ -166,7 +168,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
         const data = await extract.json() as { resumeId?: string };
         toast.success("Extraction complete");
         setStageSafe("redirecting");
-        window.location.href = `/resumes/${data.resumeId}`;
+        if (data.resumeId) router.push(`/resumes/${data.resumeId}`);
       }
     } catch (e: unknown) {
       const message = typeof e === 'object' && e && 'message' in e ? String((e as Record<string, unknown>).message) : 'Upload failed';
@@ -176,7 +178,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
       setProgressDom(0);
       setStageSafe("idle");
     }
-  }, [maxBytes, setStageSafe]);
+  }, [maxBytes, setStageSafe, router]);
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
