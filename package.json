@@ -25,6 +25,7 @@
     "lucide-react": "^0.548.0",
     "next": "16.0.1",
     "next-auth": "^4.24.12",
+    "nextjs-toploader": "^3.9.17",
     "openai": "^6.7.0",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.4.296",
