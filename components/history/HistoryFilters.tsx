@@ -22,6 +22,7 @@ export default function HistoryFilters({ initialQ = "", initialStatus = "" }: Pr
       const sp = new URLSearchParams(params?.toString());
       if (q) sp.set("q", q); else sp.delete("q");
       if (status) sp.set("status", status); else sp.delete("status");
+      sp.delete("page"); // Reset to page 1 when search changes
       router.replace(`${pathname}?${sp.toString()}`);
     }, 350);
     return () => clearTimeout(id);
@@ -34,6 +35,7 @@ export default function HistoryFilters({ initialQ = "", initialStatus = "" }: Pr
       const sp = new URLSearchParams(params?.toString());
       if (q) sp.set("q", q); else sp.delete("q");
       if (nextStatus) sp.set("status", nextStatus); else sp.delete("status");
+      sp.delete("page"); // Reset to page 1 when filter changes
       router.replace(`${pathname}?${sp.toString()}`);
       return nextStatus;
     });
