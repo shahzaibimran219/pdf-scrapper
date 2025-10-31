@@ -8,9 +8,21 @@ export async function grantCredits(userId: string, amount: number, meta?: unknow
     const oldCredits = user?.credits || 0;
     
     await tx.user.update({ where: { id: userId }, data: { credits: { increment: amount } } });
-    await tx.creditLedger.create({
-      data: { userId, delta: amount, reason: "SUBSCRIPTION_GRANT", meta: meta as any },
-    });
+    
+    // Create credit ledger entry with error handling for idempotency
+    try {
+      await tx.creditLedger.create({
+        data: { userId, delta: amount, reason: "SUBSCRIPTION_GRANT", resumeId: null, meta: meta as any },
+      });
+      console.log(`[CREDITS] Credit ledger entry created for user ${userId}`);
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        console.log(`[CREDITS] Credit ledger entry already exists for user ${userId}, skipping`);
+      } else {
+        console.error(`[CREDITS] Failed to create credit ledger entry for user ${userId}:`, e);
+        throw e; // Re-throw if not a duplicate
+      }
+    }
     
     console.log(`[CREDITS] User ${userId} credits: ${oldCredits} → ${oldCredits + amount} (+${amount})`);
   });

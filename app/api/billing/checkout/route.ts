@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   // Ensure we have a DB user and a valid Stripe customer (self-healing)
   const existingById = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, email: true, name: true, stripeCustomerId: true, stripeSubscriptionId: true, planType: true, credits: true },
+    select: { id: true, email: true, name: true, stripeCustomerId: true, stripeSubscriptionId: true, planType: true, credits: true, metadata: true },
   });
   const emailFromSession = session.user.email ?? undefined;
   let dbUser = existingById ?? (emailFromSession
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         where: { email: emailFromSession },
         update: {},
         create: { email: emailFromSession, name: session.user.name ?? null },
-        select: { id: true, email: true, name: true, stripeCustomerId: true, stripeSubscriptionId: true, planType: true, credits: true },
+        select: { id: true, email: true, name: true, stripeCustomerId: true, stripeSubscriptionId: true, planType: true, credits: true, metadata: true },
       })
     : null);
   if (!dbUser) return NextResponse.json(errorEnvelope("BAD_REQUEST", "User email required"), { status: 400 });
@@ -56,17 +56,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(errorEnvelope("PRO_ACTIVE", "You still have Pro credits available"), { status: 400 });
   }
     // Cancel existing Stripe subscription (Basic) when upgrading to Pro
+    // BUT: Set metadata flag BEFORE canceling so webhook knows it's an upgrade
     if (currentPlan === "BASIC" && planRequested === "Pro" && dbUser.stripeSubscriptionId) {
       try {
+        // Set upgrade metadata BEFORE canceling to prevent webhook from setting FREE
+        await prisma.user.update({
+          where: { id: dbUser.id },
+          data: {
+            metadata: {
+              ...((dbUser.metadata as any) || {}),
+              upgradingFromSubscription: dbUser.stripeSubscriptionId,
+              upgradeCheckoutPending: true,
+            } as any,
+          }
+        });
+        
         await stripe.subscriptions.cancel(dbUser.stripeSubscriptionId, {
           invoice_now: false,
           prorate: false,
         });
-        await prisma.user.update({
-          where: { id: dbUser.id },
-          data: { stripeSubscriptionId: null }
-        });
-        console.log(`[CHECKOUT] Cancelled previous Basic sub before Pro upgrade for ${dbUser.id}`);
+        
+        // Don't clear stripeSubscriptionId yet - let webhook handle it to maintain guard logic
+        console.log(`[CHECKOUT] Cancelled previous Basic sub before Pro upgrade for ${dbUser.id}, set upgrade flag`);
       } catch (err) {
         console.error("Failed to cancel previous subscription on upgrade", err);
         return NextResponse.json(errorEnvelope("STRIPE_CANCEL_PREV_FAILED", "Failed to cancel current plan during upgrade."), { status: 500 });
@@ -117,6 +128,7 @@ export async function POST(req: NextRequest) {
             lastCheckoutSessionId: null,
             lastCheckoutPlan: body.plan,
             lastCheckoutCredits: body.credits,
+            lastCheckoutTimestamp: new Date().toISOString(),
           } as any,
         },
       });
@@ -162,11 +174,12 @@ export async function POST(req: NextRequest) {
     where: { id: dbUser.id },
     data: { 
       stripeCustomerId: customerId,
-      // Store checkout session metadata for webhook
+      // Store checkout session metadata for webhook (with timestamp for upgrade guard)
       metadata: {
         lastCheckoutSessionId: sessionCheckout.id,
         lastCheckoutPlan: body.plan,
         lastCheckoutCredits: body.credits,
+        lastCheckoutTimestamp: new Date().toISOString(),
       } as any,
     },
   });
