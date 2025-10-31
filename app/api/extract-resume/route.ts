@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
     }
     const fileName = body?.fileName || "uploaded.pdf";
     const fileSize = body?.fileSize || 0;
+    // Enforce hard 10MB limit server-side
+    const MAX_BYTES = 10 * 1024 * 1024;
+    if (fileSize > MAX_BYTES) {
+      return NextResponse.json({ code: "FILE_TOO_LARGE", message: "File exceeds 10 MB limit." }, { status: 413 });
+    }
     console.log("[EXTRACT-RESUME] Received images:", images.length);
 
     // Billing pre-check (require >=100 credits and not frozen)
