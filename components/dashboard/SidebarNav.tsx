@@ -1,9 +1,10 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { signOut } from "next-auth/react";
-import { Upload, History, LogOut, Settings } from "lucide-react";
+import { Upload, History, LogOut, Settings, Loader2 } from "lucide-react";
 
 const items = [
   { href: "/dashboard/upload", label: "Scrape", Icon: Upload },
@@ -13,6 +14,7 @@ const items = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const [isSigningOut, setIsSigningOut] = useState(false);
   return (
     <div className="flex   flex-col">
       <div className="mb-3">
@@ -45,10 +47,24 @@ export function SidebarNav() {
         <Button
           type="button"
           variant="ghost"
-          className="w-full justify-start text-red-600 hover:bg-red-50"
-          onClick={() => signOut({ callbackUrl: "/" })}
+          className="w-full justify-start text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={async () => {
+            setIsSigningOut(true);
+            try {
+              await signOut({ callbackUrl: "/" });
+            } catch (error) {
+              console.error("Logging out error:", error);
+              setIsSigningOut(false);
+            }
+          }}
+          disabled={isSigningOut}
         >
-          <LogOut className="mr-2 h-4 w-4" /> Log out
+          {isSigningOut ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <LogOut className="mr-2 h-4 w-4" />
+          )}
+          {isSigningOut ? "Logging out..." : "Log out"}
         </Button>
       </div>
     </div>
