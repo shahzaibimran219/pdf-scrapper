@@ -1,6 +1,12 @@
 import ResumeUploader from "@/components/ResumeUploader";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import BillingBanner from "@/components/billing/BillingBanner";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Upload Resume - Dashboard | PDF Resume Scrapper",
+  description: "Upload and extract structured data from PDF resumes using AI-powered parsing",
+};
 
 export default async function UploadPage() {
   return (

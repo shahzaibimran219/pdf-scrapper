@@ -5,6 +5,7 @@ import { ExportCopyButtons } from "@/components/resumes/ExportCopyButtons";
 import { ArrowLeft, FileX, AlertTriangle } from "lucide-react";
 import { CollapsibleJson } from "@/components/json/CollapsibleJson";
 import { calculateMissingDataPercentage } from "@/lib/resume-utils";
+import type { Metadata } from "next";
 import type {
   Profile,
   WorkExperience,
@@ -18,6 +19,24 @@ import type {
 } from "@/types/resume";
 
 type Props = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const resume = await prisma.resume.findUnique({ where: { id } });
+  if (!resume) {
+    return { title: "Resume Not Found - PDF Resume Scrapper" };
+  }
+  const data = (resume.resumeData ?? {}) as ResumeData;
+  const profile: Profile = data?.profile ?? {};
+  const name = profile?.name 
+    ? `${profile.name}${profile.surname ? ` ${profile.surname}` : ""}`
+    : resume.fileName;
+  
+  return {
+    title: `${name} - Resume Details | PDF Resume Scrapper`,
+    description: `View extracted resume data for ${name}. Structured JSON export available.`,
+  };
+}
 
 export default async function ResumeDetailPage({ params }: Props) {
   const { id } = await params;

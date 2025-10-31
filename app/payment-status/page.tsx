@@ -3,6 +3,10 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
 
+// Note: Metadata cannot be exported from client components
+// This page uses client component for searchParams handling
+// Consider adding metadata via a wrapper Server Component if SEO is needed
+
 function PaymentStatusInner() {
   const router = useRouter();
   const searchParams = useSearchParams();

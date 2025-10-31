@@ -1,9 +1,15 @@
 import Link from "next/link";
- import { getServerSession } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { SignInButtons } from "@/components/auth/SignInButtons";
 import { ShieldCheck, Sparkles, Zap } from "lucide-react";
 import Footer from "@/components/Footer";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Sign In - PDF Resume Scrapper",
+  description: "Sign in to start extracting structured data from PDF resumes",
+};
 
 export default async function SignInPage() {
   const session = await getServerSession();

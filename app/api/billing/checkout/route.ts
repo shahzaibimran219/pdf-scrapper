@@ -16,7 +16,6 @@ export async function POST(req: NextRequest) {
   let body: { plan: "Basic" | "Pro"; amount: number; credits: number };
   try {
     body = await req.json();
-    console.log(body);
   } catch {
     return NextResponse.json(errorEnvelope("BAD_REQUEST", "Invalid JSON"), { status: 400 });
   }
