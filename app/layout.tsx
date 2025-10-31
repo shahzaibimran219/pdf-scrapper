@@ -28,11 +28,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased relative min-h-screen`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased relative min-h-screen flex flex-col`}
       >
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(1000px_400px_at_10%_-10%,#dbeafe,transparent),radial-gradient(800px_300px_at_90%_-20%,#f5f5f4,transparent)]" />
-        <Header />
-        {children}
+        <div className="flex-1 flex flex-col">
+          <Header />
+          <div className="flex-1">
+            {children}
+          </div>
+        </div>
         <Footer />
         <Toaster richColors />
       </body>

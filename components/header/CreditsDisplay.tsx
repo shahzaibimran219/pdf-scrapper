@@ -14,9 +14,7 @@ export default function CreditsDisplay() {
       <Coins className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
       <span className="text-[hsl(var(--foreground))]">
         <span className="font-medium">{credits.toLocaleString()}</span>
-        {totalCredits > 0 && (
-          <span className="text-[hsl(var(--muted-foreground))]">/{totalCredits.toLocaleString()}</span>
-        )}
+ 
       </span>
     </div>
   );

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "@/lib/auth";
 import { errorEnvelope } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
@@ -228,6 +229,9 @@ export async function POST(req: NextRequest) {
       notes: "Initial extraction (auto + vision fallback)",
     },
   });
+
+  // Revalidate history page to show new upload immediately
+  revalidatePath("/dashboard/history");
 
   return NextResponse.json({ resumeId: resume.id, resumeData });
 }
