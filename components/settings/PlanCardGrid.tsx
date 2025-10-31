@@ -1,7 +1,7 @@
 "use client";
 import PlanCard from "./PlanCard";
 
-export default function PlanCardGrid({ billing }: { billing: { planType: string; credits: number } }) {
+export default function PlanCardGrid({ billing }: { billing: { planType: string; credits: number; subscriptionStartDate?: string | Date | null; subscriptionEndDate?: string | Date | null } }) {
   const plans = [
     {
       name: "Basic",

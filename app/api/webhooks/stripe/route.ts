@@ -138,37 +138,65 @@ export async function POST(req: NextRequest) {
       const currentCredits = user.credits || 0;
       const totalCreditsToAdd = creditsToAdd + Math.max(0, currentCredits);
       
-      // Get subscription dates from subscription object if available
+      // Get subscription dates from subscription object (most accurate source)
       let subscriptionStartDate: Date | null = null;
       let subscriptionEndDate: Date | null = null;
+      
+      // Always try to get dates from subscription object first (most accurate)
       if (subscriptionId) {
         try {
           const sub = await stripe.subscriptions.retrieve(subscriptionId);
-          // Type assertion: Stripe subscription has these properties
           const subAny = sub as any;
+          console.log(`[WEBHOOK] Retrieved subscription ${subscriptionId}:`, {
+            current_period_start: subAny.current_period_start,
+            current_period_end: subAny.current_period_end,
+            status: subAny.status,
+          });
           if (subAny.current_period_start && subAny.current_period_end) {
             subscriptionStartDate = new Date(subAny.current_period_start * 1000);
             subscriptionEndDate = new Date(subAny.current_period_end * 1000);
-            console.log(`[WEBHOOK] Subscription dates:`, {
+            console.log(`[WEBHOOK] Subscription dates from subscription object:`, {
               start: subscriptionStartDate.toISOString(),
               end: subscriptionEndDate.toISOString(),
             });
+          } else {
+            console.warn(`[WEBHOOK] Subscription ${subscriptionId} missing period dates`);
           }
         } catch (e) {
           console.warn(`[WEBHOOK] Could not retrieve subscription ${subscriptionId} for dates:`, e);
-          // Fallback: use invoice period if available
-          const invoiceAny = invoice as any;
-          if (invoiceAny.period_start && invoiceAny.period_end) {
-            subscriptionStartDate = new Date(invoiceAny.period_start * 1000);
-            subscriptionEndDate = new Date(invoiceAny.period_end * 1000);
-          }
         }
-      } else {
-        // Fallback to invoice period
+      }
+      
+      // Fallback: use invoice period if subscription retrieval failed
+      if (!subscriptionStartDate || !subscriptionEndDate) {
         const invoiceAny = invoice as any;
         if (invoiceAny.period_start && invoiceAny.period_end) {
-          subscriptionStartDate = new Date(invoiceAny.period_start * 1000);
-          subscriptionEndDate = new Date(invoiceAny.period_end * 1000);
+          // Only use invoice dates if they're different (invoice.paid sometimes has same timestamp)
+          const invoiceStart = new Date(invoiceAny.period_start * 1000);
+          const invoiceEnd = new Date(invoiceAny.period_end * 1000);
+          if (invoiceStart.getTime() !== invoiceEnd.getTime()) {
+            subscriptionStartDate = invoiceStart;
+            subscriptionEndDate = invoiceEnd;
+            console.log(`[WEBHOOK] Subscription dates from invoice (fallback):`, {
+              start: subscriptionStartDate.toISOString(),
+              end: subscriptionEndDate.toISOString(),
+            });
+          } else {
+            console.warn(`[WEBHOOK] Invoice period dates are identical (likely subscription_create), trying line item period`);
+            // Final fallback: invoice line item period usually has correct start/end even on subscription_create
+            try {
+              const line = invoiceAny.lines?.data?.[0];
+              const lp = line?.period;
+              if (lp?.start && lp?.end) {
+                subscriptionStartDate = new Date(lp.start * 1000);
+                subscriptionEndDate = new Date(lp.end * 1000);
+                console.log(`[WEBHOOK] Subscription dates from invoice line period:`, {
+                  start: subscriptionStartDate.toISOString(),
+                  end: subscriptionEndDate.toISOString(),
+                });
+              }
+            } catch {}
+          }
         }
       }
       
@@ -180,44 +208,139 @@ export async function POST(req: NextRequest) {
       });
       
       // Update user plan and set total credits with subscription dates
-      await prisma.user.update({ 
-        where: { id: user.id }, 
-        data: { 
-          planType, 
-          credits: totalCreditsToAdd,
-          scrapingFrozen: false, 
-          ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
-          ...(subscriptionStartDate ? { subscriptionStartDate } : {}),
-          ...(subscriptionEndDate ? { subscriptionEndDate } : {}),
-        } 
-      });
+      const updateData: any = {
+        planType, 
+        credits: totalCreditsToAdd,
+        scrapingFrozen: false,
+      };
+      
+      if (subscriptionId) {
+        updateData.stripeSubscriptionId = subscriptionId;
+      }
+      
+      // Use dates from earlier extraction if available
+      if (subscriptionStartDate) updateData.subscriptionStartDate = subscriptionStartDate;
+      if (subscriptionEndDate) updateData.subscriptionEndDate = subscriptionEndDate;
+      
+      // Clean up checkout metadata after successful subscription activation
+      const meta = (user.metadata as any) || {};
+      if (meta.lastCheckoutSessionId || meta.lastCheckoutPlan || meta.lastCheckoutCredits) {
+        delete meta.lastCheckoutSessionId;
+        delete meta.lastCheckoutPlan;
+        delete meta.lastCheckoutCredits;
+        updateData.metadata = meta as any;
+        console.log(`[WEBHOOK] Cleaned up checkout metadata after successful subscription activation`);
+      }
+      
+      await prisma.user.update({ where: { id: user.id }, data: updateData });
       
       console.log(`[WEBHOOK] User ${user.id} updated:`, {
         planType,
         credits: totalCreditsToAdd,
         scrapingFrozen: false,
         stripeSubscriptionId: subscriptionId,
+        subscriptionStartDate: updateData.subscriptionStartDate?.toISOString(),
+        subscriptionEndDate: updateData.subscriptionEndDate?.toISOString(),
       });
       
-      // Log the credit grant with details
-      await prisma.creditLedger.create({
-        data: {
-          userId: user.id,
-          delta: totalCreditsToAdd,
-          reason: "SUBSCRIPTION_GRANT",
-          resumeId: null,
-          meta: {
-            planType,
-            newCredits: creditsToAdd,
-            remainingCredits: currentCredits,
-            totalCredits: totalCreditsToAdd,
-            eventId: event.id,
-          } as any,
-        },
-      });
+      // Log the credit grant with details (with error handling for idempotency)
+      try {
+        await prisma.creditLedger.create({
+          data: {
+            userId: user.id,
+            delta: totalCreditsToAdd,
+            reason: "SUBSCRIPTION_GRANT",
+            resumeId: null,
+            meta: {
+              planType,
+              newCredits: creditsToAdd,
+              remainingCredits: currentCredits,
+              totalCredits: totalCreditsToAdd,
+              eventId: event.id,
+            } as any,
+          },
+        });
+        console.log(`[WEBHOOK] Credit ledger entry created for user ${user.id}`);
+      } catch (e: any) {
+        // Handle duplicate entry (shouldn't happen due to event idempotency, but be safe)
+        if (e?.code === 'P2002') {
+          console.log(`[WEBHOOK] Credit ledger entry already exists for user ${user.id}, skipping`);
+        } else {
+          console.error(`[WEBHOOK] Failed to create credit ledger entry for user ${user.id}:`, e);
+        }
+      }
       
-      console.log(`[WEBHOOK] Credit ledger entry created for user ${user.id}`);
       console.log(`[WEBHOOK] SUCCESS: User ${user.id} upgraded to ${planType}, total credits: ${totalCreditsToAdd} (${creditsToAdd} new + ${currentCredits} remaining)`);
+    }
+
+    if (event.type === "checkout.session.completed") {
+      console.log(`[WEBHOOK] Processing checkout.session.completed event`);
+      const session = event.data.object;
+      const customerId = session.customer as string;
+      
+      if (!customerId || session.mode !== "subscription") {
+        console.log(`[WEBHOOK] Checkout session not for subscription, skipping`);
+        return NextResponse.json({ ok: true });
+      }
+
+      const user = await prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
+      if (!user) {
+        console.warn(`[WEBHOOK] No user found for customer ${customerId} in checkout completion`);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Get subscription from checkout session
+      const subscriptionId = session.subscription as string | null;
+      if (subscriptionId) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          const subAny = sub as any;
+          const updateData: any = { stripeSubscriptionId: subscriptionId };
+          
+          if (subAny.current_period_start && subAny.current_period_end) {
+            updateData.subscriptionStartDate = new Date(subAny.current_period_start * 1000);
+            updateData.subscriptionEndDate = new Date(subAny.current_period_end * 1000);
+          }
+          
+          await prisma.user.update({ where: { id: user.id }, data: updateData });
+          console.log(`[WEBHOOK] User ${user.id} subscription dates set from checkout completion`);
+        } catch (e) {
+          console.warn(`[WEBHOOK] Could not retrieve subscription ${subscriptionId} from checkout session:`, e);
+        }
+      }
+    }
+
+    if (event.type === "customer.subscription.created") {
+      console.log(`[WEBHOOK] Processing customer.subscription.created event`);
+      const sub = event.data.object;
+      const customerId = sub.customer as string;
+      const user = await prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
+      
+      if (!user) {
+        console.warn(`[WEBHOOK] No user found for customer ${customerId} in subscription creation`);
+        return NextResponse.json({ ok: true });
+      }
+
+      console.log(`[WEBHOOK] Subscription created for user ${user.id}:`, {
+        subscriptionId: sub.id,
+        status: sub.status,
+      });
+
+      // Update subscription dates immediately when subscription is created
+      const subAny = sub as any;
+      const updateData: any = { stripeSubscriptionId: sub.id };
+      
+      if (subAny.current_period_start && subAny.current_period_end) {
+        updateData.subscriptionStartDate = new Date(subAny.current_period_start * 1000);
+        updateData.subscriptionEndDate = new Date(subAny.current_period_end * 1000);
+        console.log(`[WEBHOOK] Set subscription dates on creation:`, {
+          start: updateData.subscriptionStartDate.toISOString(),
+          end: updateData.subscriptionEndDate.toISOString(),
+        });
+      }
+
+      await prisma.user.update({ where: { id: user.id }, data: updateData });
+      console.log(`[WEBHOOK] User ${user.id} subscription created with dates`);
     }
 
     if (event.type === "customer.subscription.updated") {
@@ -298,6 +421,48 @@ export async function POST(req: NextRequest) {
 
       // If a downgrade was scheduled, immediately create a Basic subscription
       const meta = (user.metadata as any) || {};
+
+      // Guard: if we are upgrading (old sub canceled just before new checkout), do not set FREE
+      // Check multiple signals: upgrade flag, recent checkout, or subscription ID mismatch
+      const checkoutTimestamp = meta.lastCheckoutTimestamp ? new Date(meta.lastCheckoutTimestamp) : null;
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const isRecentCheckout = checkoutTimestamp && checkoutTimestamp > fiveMinutesAgo;
+      const hasCheckoutMetadata = meta.lastCheckoutPlan || meta.lastCheckoutSessionId;
+      const upgradeFlag = meta.upgradeCheckoutPending || meta.upgradingFromSubscription === sub.id;
+      
+      // If upgrade flag is set, OR checkout was recent, OR deleted sub doesn't match current sub
+      const isReplacingOldSubscription = upgradeFlag || 
+                                         (isRecentCheckout && hasCheckoutMetadata) || 
+                                         (user.stripeSubscriptionId && user.stripeSubscriptionId !== sub.id && hasCheckoutMetadata);
+      
+      if (isReplacingOldSubscription) {
+        // Clear upgrade flags
+        delete meta.upgradeCheckoutPending;
+        delete meta.upgradingFromSubscription;
+        
+        console.log(
+          `[WEBHOOK] Upgrade in progress detected; skipping downgrade to FREE on subscription.deleted`,
+          { 
+            deletedSubscriptionId: sub.id, 
+            currentSubscriptionId: user.stripeSubscriptionId,
+            lastCheckoutPlan: meta.lastCheckoutPlan,
+            checkoutTimestamp: checkoutTimestamp?.toISOString(),
+            upgradeFlag,
+            isRecentCheckout
+          }
+        );
+        
+        // Clear upgrade flags in DB
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { 
+            stripeSubscriptionId: null, // Clear old subscription ID
+            metadata: meta as any 
+          }
+        });
+        
+        return NextResponse.json({ ok: true });
+      }
       if (meta.downgradeScheduled && meta.downgradeTarget === "BASIC") {
         try {
           // Create a basic monthly price on the fly, then subscribe using price id (type-safe)
@@ -326,7 +491,15 @@ export async function POST(req: NextRequest) {
           console.error(`[WEBHOOK] Failed creating Basic subscription during scheduled downgrade for user ${user.id}`, e);
         }
       } else {
-        await prisma.user.update({ where: { id: user.id }, data: { planType: "FREE", scrapingFrozen: true } });
+        await prisma.user.update({ 
+          where: { id: user.id }, 
+          data: { 
+            planType: "FREE", 
+            scrapingFrozen: true,
+            subscriptionStartDate: null,
+            subscriptionEndDate: null,
+          } 
+        });
         console.log(`[WEBHOOK] User ${user.id} downgraded to FREE plan, scraping frozen`);
       }
     }

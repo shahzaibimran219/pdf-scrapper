@@ -59,6 +59,8 @@ export async function POST(req: NextRequest) {
       credits: 0,
       scrapingFrozen: true,
       stripeSubscriptionId: null,
+      subscriptionStartDate: null,
+      subscriptionEndDate: null,
       metadata: clearedMeta as any,
     },
   });
