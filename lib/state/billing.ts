@@ -8,6 +8,7 @@ type BillingState = {
   needsRenewal: boolean;
   needsUpgrade: boolean;
   downgradeScheduled?: boolean;
+  isHydrated: boolean;
   setBilling: (p: Partial<BillingState>) => void;
   refresh: () => Promise<void>;
 };
@@ -19,11 +20,15 @@ export const useBillingStore = create<BillingState>((set) => ({
   needsRenewal: false,
   needsUpgrade: false,
   downgradeScheduled: false,
-  setBilling: (p) => set(p as any),
+  isHydrated: false,
+  setBilling: (p) => set({ ...(p as any), isHydrated: true }),
   refresh: async () => {
     try {
       const res = await fetch("/api/billing/me", { cache: "no-store" });
-      if (!res.ok) return;
+      if (!res.ok) {
+        set({ isHydrated: true });
+        return;
+      }
       const data = await res.json();
       set({
         planType: data.planType ?? "FREE",
@@ -32,8 +37,11 @@ export const useBillingStore = create<BillingState>((set) => ({
         needsRenewal: data.needsRenewal ?? false,
         needsUpgrade: data.needsUpgrade ?? false,
         downgradeScheduled: !!data.downgradeScheduled,
+        isHydrated: true,
       });
-    } catch {}
+    } catch {
+      set({ isHydrated: true });
+    }
   },
 }));
 
