@@ -67,14 +67,26 @@ Supabase
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET` — e.g. `resumes` (client)
 
+Stripe
+
+STRIPE_SECRET_KEY=sk_test_********************************
+STRIPE_PUBLIC_KEY=pk_test_********************************
+STRIPE_WEBHOOK_SECRET=whsec_*****
+STRIPE_PRICE_BASIC=price_*******
+STRIPE_PRICE_PRO= price_**********
+
 OpenAI
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL` — optional (defaults to `gpt-4o-mini`)
+
+
 
 Extraction Budgets
 - `EXTRACT_TOKEN_BUDGET` (default 8000)
 - `EXTRACT_MAX_PAGES` (default 20)
 - `EXTRACT_MAX_IMAGES` (default 10)
+
+
 
 Images (Next.js)
 - Remote host allowed: `lh3.googleusercontent.com` in `next.config.ts`
