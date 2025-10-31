@@ -1,13 +1,15 @@
 import NextAuth from "next-auth";
 import { authOptions } from "@/lib/auth";
+import type { NextRequest } from "next/server";
 
-// NextAuth v4 App Router - Type assertion to resolve TypeScript call signature issue
-const handler = (NextAuth as unknown as (options: typeof authOptions) => {
-  GET: (req: Request, context: { params: Promise<{ nextauth: string[] }> }) => Promise<Response>;
-  POST: (req: Request, context: { params: Promise<{ nextauth: string[] }> }) => Promise<Response>;
-})(authOptions);
+// NextAuth v4 App Router - NextAuth actually returns a single handler function that works for both GET and POST
+// The handler automatically handles the request method internally
+const handler = (NextAuth as unknown as (
+  options: typeof authOptions
+) => (req: NextRequest, context: { params: Promise<{ nextauth: string[] }> }) => Promise<Response>)(authOptions);
 
-// Export GET and POST handlers for Next.js App Router
-export { handler as GET, handler as POST };
+// Export the same handler for both GET and POST - NextAuth handles method routing internally
+export const GET = handler;
+export const POST = handler;
 
 

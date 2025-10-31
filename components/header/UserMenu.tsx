@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { signOut } from "next-auth/react";
-import { LogOut } from "lucide-react";
+import { LogOut, Loader2 } from "lucide-react";
 
 type Props = {
   email?: string | null;
@@ -13,6 +13,7 @@ type Props = {
 
 export function UserMenu({ email, image }: Props) {
   const [open, setOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,10 +50,23 @@ export function UserMenu({ email, image }: Props) {
               type="button"
               variant="ghost"
               className="w-full justify-start text-left px-3 py-2 h-auto text-zinc-700"
-              onClick={() => signOut({ callbackUrl: "/" })}
+              onClick={async () => {
+                setIsSigningOut(true);
+                try {
+                  await signOut({ callbackUrl: "/" });
+                } catch (error) {
+                  console.error("Logging out error:", error);
+                  setIsSigningOut(false);
+                }
+              }}
+              disabled={isSigningOut}
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign out
+              {isSigningOut ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <LogOut className="mr-2 h-4 w-4" />
+              )}
+              {isSigningOut ? "Logging out..." : "Log out"}
             </Button>
           </div>
         </div>
