@@ -119,11 +119,27 @@ export default async function ResumeDetailPage({ params }: Props) {
             </div>
             <div>
               <div className="text-xs text-[hsl(var(--muted-foreground))]">LinkedIn</div>
-              <div className="text-sm"><a className="underline" href={profile?.linkedIn ?? "#"} target="_blank" rel="noreferrer">{profile?.linkedIn ?? "—"}</a></div>
+              <div className="text-sm">
+                {(() => {
+                  const raw = typeof profile?.linkedIn === "string" ? profile.linkedIn.trim() : "";
+                  const val = raw && raw.toLowerCase() !== "null" ? raw : "";
+                  if (!val) return "—";
+                  const href = /^(https?:)?\/\//i.test(val) ? val : `https://${val}`;
+                  return <a className="underline" href={href} target="_blank" rel="noreferrer">{val}</a>;
+                })()}
+              </div>
             </div>
             <div>
               <div className="text-xs text-[hsl(var(--muted-foreground))]">Website</div>
-              <div className="text-sm"><a className="underline" href={profile?.website ?? "#"} target="_blank" rel="noreferrer">{profile?.website ?? "—"}</a></div>
+              <div className="text-sm">
+                {(() => {
+                  const raw = typeof profile?.website === "string" ? profile.website.trim() : "";
+                  const val = raw && raw.toLowerCase() !== "null" ? raw : "";
+                  if (!val) return "—";
+                  const href = /^(https?:)?\/\//i.test(val) ? val : `https://${val}`;
+                  return <a className="underline" href={href} target="_blank" rel="noreferrer">{val}</a>;
+                })()}
+              </div>
             </div>
             <div className="sm:col-span-2">
               <div className="text-xs text-[hsl(var(--muted-foreground))]">Location</div>
