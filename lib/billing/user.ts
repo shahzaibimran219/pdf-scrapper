@@ -8,6 +8,7 @@ export type UserBillingSummary = {
   needsRenewal: boolean; // credits < 100 and plan !== FREE and subscription expired
   needsUpgrade: boolean; // credits < 100 but subscription still active (ask to upgrade plan)
   downgradeScheduled?: boolean;
+  subscriptionStartDate?: Date | null;
   subscriptionEndDate?: Date | null;
 };
 
@@ -22,7 +23,7 @@ export async function getCurrentUserBilling(): Promise<UserBillingSummary | null
         session.user.email ? { email: session.user.email } : { id: "__none__" },
       ],
     },
-    select: { planType: true, credits: true, metadata: true, subscriptionEndDate: true },
+    select: { planType: true, credits: true, metadata: true, subscriptionStartDate: true, subscriptionEndDate: true },
   });
 
   if (!user) return { planType: "FREE", credits: 0, isLowCredits: true, needsRenewal: false, needsUpgrade: false };
@@ -45,6 +46,7 @@ export async function getCurrentUserBilling(): Promise<UserBillingSummary | null
     needsRenewal, 
     needsUpgrade,
     downgradeScheduled,
+    subscriptionStartDate: user.subscriptionStartDate ?? null,
     subscriptionEndDate: user.subscriptionEndDate ?? null,
   };
 }

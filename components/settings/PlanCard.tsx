@@ -12,6 +12,8 @@ type Plan = {
 type Billing = {
   planType: string;
   credits: number;
+  subscriptionStartDate?: string | Date | null;
+  subscriptionEndDate?: string | Date | null;
 };
 
 export default function PlanCard({ plan, billing }: { plan: Plan; billing: Billing }) {
@@ -80,6 +82,16 @@ export default function PlanCard({ plan, billing }: { plan: Plan; billing: Billi
         )}
       </div>
       <div className="text-2xl font-bold mb-1">${plan.price}<span className="text-base text-zinc-500">/month</span></div>
+      {isCurrent && (billing.subscriptionStartDate || billing.subscriptionEndDate) && (
+        <div className="mb-2 text-xs text-zinc-500">
+          {(() => {
+            const fmt = (d: string | Date | null | undefined) => d ? new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "?";
+            const start = fmt(billing.subscriptionStartDate);
+            const end = fmt(billing.subscriptionEndDate);
+            return <>Cycle: {start} → {end}</>;
+          })()}
+        </div>
+      )}
       <div className="mb-2 text-sm text-zinc-600">{plan.credits.toLocaleString()} credits</div>
       <div className="mb-3 text-[0.97rem] text-zinc-500">{plan.desc}</div>
       <ul className="pl-4 mb-2 text-xs list-disc text-zinc-400">
