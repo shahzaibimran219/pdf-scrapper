@@ -19,11 +19,12 @@ export default async function Home() {
             <p className="mt-4 text-[hsl(var(--muted-foreground))]">
               Upload PDFs up to 10 MB. We parse with OpenAI and keep a complete history. Export JSON or revisit later.
             </p>
-            <div className="mt-8 flex items-center gap-3">
-              <Link href={session ? "/dashboard" : "/signin"} prefetch>
-                <Button size="lg" variant="primary" className="gap-2">
-                  <span>{session ? "Go to Dashboard" : "Sign in to get started"}</span>
-                  <ArrowRight className="h-4 w-4" />
+            <div className="mt-8 flex flex-col md:flex-row items-stretch sm:items-center gap-3">
+              <Link href={session ? "/dashboard" : "/signin"} prefetch className="flex-1 sm:flex-initial w-full sm:w-auto">
+                <Button size="lg" variant="primary" className="gap-2 w-full sm:w-auto text-sm sm:text-base">
+                  <span className="hidden sm:inline">{session ? "Go to Dashboard" : "Sign in to get started"}</span>
+                  <span className="sm:hidden">{session ? "Dashboard" : "Sign in"}</span>
+                  <ArrowRight className="h-4 w-4 flex-shrink-0" />
                 </Button>
               </Link>
               <SeeFeaturesButton />
@@ -61,10 +62,11 @@ export default async function Home() {
               <h2 className="text-xl font-semibold">Ready to parse your first resume?</h2>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Sign in and upload a PDF—get structured JSON in seconds.</p>
             </div>
-            <Link href={session ? "/dashboard" : "/signin"} prefetch>
-              <Button variant="primary" size="lg" className="gap-2 mt-3 sm:mt-0">
-                <span>{session ? "Go to Dashboard" : "Sign in"}</span>
-                <ArrowRight className="h-4 w-4" />
+            <Link href={session ? "/dashboard" : "/signin"} prefetch className="w-full sm:w-auto">
+              <Button variant="primary" size="lg" className="gap-2 mt-3 sm:mt-0 w-full sm:w-auto text-sm sm:text-base">
+                <span className="hidden sm:inline">{session ? "Go to Dashboard" : "Sign in"}</span>
+                <span className="sm:hidden">{session ? "Dashboard" : "Sign in"}</span>
+                <ArrowRight className="h-4 w-4 flex-shrink-0" />
               </Button>
             </Link>
           </div>

@@ -26,9 +26,10 @@ export default function SeeFeaturesButton() {
   }, []);
 
   return (
-    <Button variant="secondary" size="lg" className="gap-2" onClick={handleSeeFeatures} type="button">
-      <Sparkles className="h-4 w-4 text-[hsl(var(--primary))]" />
-      See features
+    <Button variant="secondary" size="lg" className="gap-2 w-full sm:w-auto text-sm sm:text-base" onClick={handleSeeFeatures} type="button">
+      <Sparkles className="h-4 w-4 text-[hsl(var(--primary))] flex-shrink-0" />
+      <span className="hidden sm:inline">See features</span>
+      <span className="sm:hidden">Features</span>
     </Button>
   );
 }

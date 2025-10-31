@@ -12,6 +12,7 @@ type Props = {
 export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   // Avoid frequent re-renders: update progress via DOM refs instead of state
   const progressBarRef = useRef<HTMLDivElement>(null);
   const percentRef = useRef<HTMLSpanElement>(null);
@@ -28,6 +29,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
   const [stage, setStage] = useState<StageType>("idle");
   const setStageSafe = useCallback((next: StageType) => setStage((cur) => (cur === next ? cur : next)), []);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   const onFile = useCallback(async (file: File) => {
     if (file.type !== "application/pdf") {
@@ -185,8 +187,33 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
     if (file) onFile(file);
   };
 
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isUploading) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the drop zone itself
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (isUploading) return;
+
     const file = e.dataTransfer.files?.[0];
     if (file) onFile(file);
   };
@@ -194,19 +221,41 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
   return (
     <div className="relative rounded-2xl bg-[hsl(var(--card))] p-6 shadow-sm overflow-hidden flex flex-col min-h-[min(300px,33vh)]">
       <div
-        className="group relative rounded-xl p-8 text-center cursor-pointer transition-all bg-gradient-to-br from-[hsl(var(--muted))] to-transparent hover:shadow-md focus-visible:outline-none"
-        onDragOver={(e) => e.preventDefault()}
+        ref={dropZoneRef}
+        className={`group relative rounded-xl p-8 text-center cursor-pointer transition-all bg-gradient-to-br from-[hsl(var(--muted))] to-transparent focus-visible:outline-none ${
+          isDragging 
+            ? "border-2 border-dashed border-[hsl(var(--primary))] bg-[hsl(var(--primary))/0.05] shadow-lg scale-[1.02]" 
+            : "border-2 border-dashed border-transparent hover:border-[hsl(var(--border))] hover:shadow-md"
+        }`}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
         onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => !isUploading && inputRef.current?.click()}
       >
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] shadow-sm">
-          <UploadCloud className="h-5 w-5" />
+        <div className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full transition-all ${
+          isDragging 
+            ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] scale-110" 
+            : "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))]"
+        } shadow-sm`}>
+          <UploadCloud className={`h-5 w-5 transition-transform ${isDragging ? "animate-bounce" : ""}`} />
         </div>
-        <p className="text-sm">
-          <span className="font-medium">Drag & drop</span> your PDF here or
-          <button type="button" className="ml-1 underline">browse</button>
-        </p>
-        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">PDF up to {Math.floor(maxBytes / (1024 * 1024))} MB</p>
+        {isDragging ? (
+          <>
+            <p className="text-base font-semibold text-[hsl(var(--primary))]">
+              Drop your PDF file here
+            </p>
+            <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Release to upload</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm">
+              <span className="font-medium">Drag & drop</span> your PDF here or{" "}
+              <button type="button" className="underline" onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}>browse</button>
+            </p>
+            <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">PDF up to {Math.floor(maxBytes / (1024 * 1024))} MB</p>
+          </>
+        )}
         <input
           ref={inputRef}
           type="file"

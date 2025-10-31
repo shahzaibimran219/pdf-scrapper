@@ -14,7 +14,11 @@ export default async function Header() {
             <div className="md:hidden">
               <MobileSidebar />
             </div>
-          ) : null}
+          ) : (
+            <Link href="/" prefetch className="md:hidden flex items-center">
+              <Sparkles className="h-8 w-8 text-[hsl(var(--primary))]" />
+            </Link>
+          )}
           <Link href="/" prefetch className="hidden md:flex items-center gap-2">
             <Sparkles className="h-8 w-8 text-[hsl(var(--primary))]" />
             <span className="font-semibold text-lg tracking-tight">PDF Resume Scrapper</span>
