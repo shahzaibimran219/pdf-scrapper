@@ -25,7 +25,7 @@ export default async function SignInPage() {
                   <Sparkles className="h-5 w-5 text-[hsl(var(--primary))]" />
                 </div>
                 <div>
-                  <h1 className="text-base font-semibold leading-none">Sign in to Resume AI Scraper</h1>
+                  <h1 className="text-base font-semibold leading-none">Sign in to PDF Resume Scrapper</h1>
                   <p className="mt-0.5 text-xs text-zinc-500">Fast, structured PDF parsing</p>
                 </div>
               </div>
@@ -60,7 +60,7 @@ export default async function SignInPage() {
             <div className="rounded-2xl border border-zinc-200 bg-[hsl(var(--card))] p-6 shadow-sm md:p-8 h-full flex flex-col">
               <div className="mb-4 flex items-center gap-3">
                 <div>
-                  <p className="text-sm font-medium">Resume PDF AI Scraper</p>
+                  <p className="text-sm font-medium">PDF Resume Scrapper</p>
                   <p className="text-xs text-[hsl(var(--muted-foreground))]">Fast. Accurate. Private.</p>
                 </div>
               </div>
