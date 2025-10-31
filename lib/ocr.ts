@@ -3,7 +3,7 @@
 interface PdfjsDocumentLike {
   getPage(pageNumber: number): Promise<{
     getViewport(options: { scale: number }): { width: number; height: number };
-    render(params: { canvasContext: CanvasRenderingContext2D; viewport: { width: number; height: number } }): { promise: Promise<void> };
+    render(params: { canvasContext: unknown; viewport: { width: number; height: number } }): { promise: Promise<void> };
   }>;
 }
 
@@ -31,7 +31,7 @@ export async function rasterizeFirstPageToPng(pdfBytes: Uint8Array, dpi = 170): 
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Canvas context not available");
 
-    await page.render({ canvasContext: context, viewport }).promise;
+    await page.render({ canvasContext: context as unknown, viewport }).promise;
 
     const pngBuffer: Buffer = canvas.toBuffer("image/png");
     return pngBuffer;
