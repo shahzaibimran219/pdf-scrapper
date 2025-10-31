@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { getServerSession } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
-import { UserMenu } from "@/components/header/UserMenu";
 import MobileSidebar from "@/components/dashboard/MobileSidebar";
+import HeaderNav from "@/components/header/HeaderNav";
 
 export default async function Header() {
   const session = await getServerSession();
@@ -18,23 +17,15 @@ export default async function Header() {
           ) : null}
           <Link href="/" prefetch className="hidden md:flex items-center gap-2">
             <Sparkles className="h-8 w-8 text-[hsl(var(--primary))]" />
-            <span className="font-semibold text-lg tracking-tight">Resume AI Scraper</span>
+            <span className="font-semibold text-lg tracking-tight">PDF Resume Scrapper</span>
           </Link>
         </div>
         <nav className="flex items-center gap-3 text-sm">
-          {session ? (
-            <Link href="/dashboard" prefetch className="hidden sm:inline opacity-90 hover:opacity-100">Dashboard</Link>
-          ) : null}
-          {session ? (
-            <UserMenu email={session.user.email} image={session.user.image ?? null} />
-          ) : (
-            <Link href="/signin" prefetch>
-              <Button variant="primary" size="md" >
-                <span>{session ? "Go to Dashboard" : "Sign in"}</span>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          )}
+          <HeaderNav
+            userEmail={session?.user?.email}
+            userImage={session?.user?.image ?? null}
+            isSignedIn={!!session}
+          />
         </nav>
       </div>
     </header>

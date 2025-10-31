@@ -10,9 +10,10 @@ export default async function DashboardSettingsPage({ searchParams }: { searchPa
   const billing = await getCurrentUserBilling();
   const params = await searchParams;
 
-  // Show renewal warning if credits are low
+  // Show renewal/upgrade warnings if credits are low
   const isLowCredits = billing?.isLowCredits ?? false;
   const needsRenewal = billing?.needsRenewal ?? false;
+  const needsUpgrade = billing?.needsUpgrade ?? false;
 
   return (
     <div className="space-y-6">
@@ -26,7 +27,17 @@ export default async function DashboardSettingsPage({ searchParams }: { searchPa
         </div>
       )}
 
-      {isLowCredits && !needsRenewal && (
+      {needsUpgrade && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h3 className="text-sm font-medium text-amber-800">⚠️ Credits Running Low</h3>
+          <p className="text-sm text-amber-700">
+            You have {billing?.credits ?? 0} credits remaining, but your subscription is still active. 
+            Upgrade to Pro below to get 20,000 credits per month.
+          </p>
+        </div>
+      )}
+
+      {isLowCredits && !needsRenewal && !needsUpgrade && (
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
           <h3 className="text-sm font-medium text-yellow-800">⚠️ Low Credits Warning</h3>
           <p className="text-sm text-yellow-700">

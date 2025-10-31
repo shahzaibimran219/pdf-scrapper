@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PDF Scrapper",
-  description: "PDF Scrapper is a tool that allows you to scrape data like text, images, and other data from PDFs.",
+  title: "PDF Resume Scrapper",
+  description: "PDF Resume Scrapper is a tool that allows you to scrape data like text, images, and other data from PDF resumes.",
 };
 
 export default function RootLayout({

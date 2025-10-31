@@ -1,4 +1,4 @@
-## AI Scraper — Resume PDF → Structured JSON
+## PDF Resume Scrapper — Resume PDF → Structured JSON
 
 Live: https://pdf-scrapper-five.vercel.app/
 
