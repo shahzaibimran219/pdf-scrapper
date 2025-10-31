@@ -11,8 +11,7 @@ export default function BillingActions() {
   const [reason, setReason] = useState("");
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const planType = useBillingStore((s) => s.planType);
-  const credits = useBillingStore((s) => s.credits);
-  const refreshBilling = useBillingStore((s) => s.refresh);
+   const refreshBilling = useBillingStore((s) => s.refresh);
   const downgradeScheduled = useBillingStore((s) => s.downgradeScheduled);
 
   async function openPortal() {
@@ -20,7 +19,7 @@ export default function BillingActions() {
       setLoading("portal");
       const res = await fetch("/api/billing/portal", { method: "POST" });
       if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
+        const e = await res.json().catch(() => ({})) as { code?: string; message?: string };
         if (e?.code === "PORTAL_NOT_CONFIGURED") {
           toast.error("Customer portal not configured. Please configure it in your Stripe dashboard first.", {
             duration: 8000,
@@ -34,10 +33,13 @@ export default function BillingActions() {
         }
         return;
       }
-      const data = await res.json();
-      window.location.href = data.url;
-    } catch (e: any) {
-      toast.error(e?.message ?? "Portal failed");
+      const data = await res.json() as { url?: string };
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (e: unknown) {
+      const message = typeof e === 'object' && e && 'message' in e ? String((e as Record<string, unknown>).message) : 'Portal failed';
+      toast.error(message);
     } finally {
       setLoading(null);
     }
@@ -53,7 +55,7 @@ export default function BillingActions() {
         body: JSON.stringify({ reason }),
       });
       if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
+        const e = await res.json().catch(() => ({})) as { message?: string };
         toast.error(e?.message ?? "Failed to cancel subscription.");
         setLoading(null);
         return;
@@ -62,8 +64,9 @@ export default function BillingActions() {
       setShowModal(false);
       setReason("");
       window.location.reload();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to cancel subscription.");
+    } catch (e: unknown) {
+      const message = typeof e === 'object' && e && 'message' in e ? String((e as Record<string, unknown>).message) : 'Failed to cancel subscription.';
+      toast.error(message);
     } finally {
       setLoading(null);
     }
@@ -74,7 +77,7 @@ export default function BillingActions() {
     try {
       const res = await fetch("/api/billing/downgrade-schedule", { method: "POST" });
       if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
+        const e = await res.json().catch(() => ({})) as { message?: string };
         toast.error(e?.message ?? "Failed to schedule downgrade.");
         setLoading(null);
         return;
@@ -84,8 +87,9 @@ export default function BillingActions() {
         duration: 5000,
       });
       await refreshBilling();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to schedule downgrade.");
+    } catch (e: unknown) {
+      const message = typeof e === 'object' && e && 'message' in e ? String((e as Record<string, unknown>).message) : 'Failed to schedule downgrade.';
+      toast.error(message);
     } finally {
       setLoading(null);
     }
@@ -100,7 +104,7 @@ export default function BillingActions() {
             <button className="absolute right-4 top-3 text-2xl text-gray-400 hover:text-gray-600" onClick={() => setShowModal(false)}>&times;</button>
             <h3 className="text-lg font-bold mb-2 text-red-700">Cancel Subscription?</h3>
             <p className="mb-2 text-sm text-red-600">Cancelling will IMMEDIATELY forfeit all your remaining paid credits and downgrade you to the Free plan. This action is irreversible.</p>
-            <label className="mt-4 block text-xs text-zinc-600 font-semibold">Please tell us why you’re cancelling<span className="text-red-500">*</span></label>
+            <label className="mt-4 block text-xs text-zinc-600 font-semibold">Please tell us why you&apos;re cancelling<span className="text-red-500">*</span></label>
             <textarea
               className="w-full mt-1 p-2 border border-zinc-300 rounded min-h-[50px] text-sm focus:ring-2 focus:border-[hsl(var(--primary))]"
               value={reason}

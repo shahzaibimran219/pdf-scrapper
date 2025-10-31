@@ -1,6 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
-import { getServerSession } from "@/lib/auth";
+ import { getServerSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { SignInButtons } from "@/components/auth/SignInButtons";
 import { ShieldCheck, Sparkles, Zap } from "lucide-react";

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { EXTRACT_CONFIG } from "@/config/extract";
 import { debitCreditsForResume } from "@/lib/credits";
 import { createHash } from "crypto";
+import { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 
@@ -68,7 +69,10 @@ export async function POST(req: NextRequest) {
     const openai = getOpenAI();
     const model = process.env.OPENAI_MODEL_VISION ?? "gpt-4o-mini";
 
-    const input = [
+    const input: Array<{
+      role: string;
+      content: Array<{ type: "input_text"; text: string } | { type: "input_image"; image_url: string }>;
+    }> = [
       {
         role: "user",
         content: [
@@ -77,13 +81,15 @@ export async function POST(req: NextRequest) {
             text:
               "You are an OCR + resume parser. Read all images (pages) and return ONE JSON object.\nRules:\n- Strictly adhere to the provided JSON schema.\n- Use null for unknown scalars; use [] for lists.\n- Normalize whitespace, keep bullet points as bullets.\n- Prefer nulls to guessing.",
           },
-          ...images.map((dataUrl) => ({ type: "input_image", image_url: dataUrl })),
+          ...images.map((dataUrl) => ({ type: "input_image" as const, image_url: dataUrl })),
         ],
       },
-    ] as any[];
+    ];
 
     console.log("[EXTRACT-RESUME] Calling OpenAI Vision model:", model);
-    const response = await (openai as any).responses.create({
+    type OpenAIClient = { responses: { create: (req: unknown) => Promise<unknown> } };
+    const client = openai as unknown as OpenAIClient;
+    const response = await client.responses.create({
       model,
       input,
       text: {
@@ -95,20 +101,39 @@ export async function POST(req: NextRequest) {
         },
       },
       max_output_tokens: 4000,
-    } as any);
+    });
 
-    const raw = (response as any).output_text
-      ?? (response as any).content?.[0]?.text
-      ?? (response as any).choices?.[0]?.message?.content?.[0]?.text?.value
-      ?? "{}";
+    const respObj = response as Record<string, unknown>;
+    const choices = respObj.choices;
+    const content = respObj.content;
+    const outputText = respObj.output_text;
+    
+    // Type guards for response parsing
+    const isContentArray = (val: unknown): val is Array<{ text?: unknown }> =>
+      Array.isArray(val) && typeof val[0]?.text === 'string';
+    
+    const isChoicesArray = (val: unknown): val is Array<{ message?: { content?: Array<{ text?: { value?: unknown } }> } }> =>
+      Array.isArray(val) &&
+      Array.isArray(val[0]?.message?.content) &&
+      typeof val[0]?.message?.content?.[0]?.text?.value === 'string';
+    
+    const raw = typeof outputText === 'string'
+      ? outputText
+      : isContentArray(content) && typeof content[0]?.text === 'string'
+        ? String(content[0].text)
+        : isChoicesArray(choices)
+          ? String(choices[0]?.message?.content?.[0]?.text?.value ?? "{}")
+          : "{}";
 
-    let resumeData: any;
+    let resumeData: Prisma.InputJsonValue;
     try {
-      resumeData = typeof raw === "string" ? JSON.parse(raw) : raw;
-      console.log("[EXTRACT-RESUME] Parsed JSON keys:", Object.keys(resumeData || {}).length);
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      resumeData = parsed as Prisma.InputJsonValue;
+      const keys = typeof parsed === 'object' && parsed ? Object.keys(parsed as Record<string, unknown>).length : 0;
+      console.log("[EXTRACT-RESUME] Parsed JSON keys:", keys);
     } catch {
       console.warn("[EXTRACT-RESUME] Failed to parse JSON; returning raw_text");
-      resumeData = { raw_text: String(raw ?? ""), _error: "Failed to parse JSON" };
+      resumeData = { raw_text: String(raw ?? ""), _error: "Failed to parse JSON" } as unknown as Prisma.InputJsonValue;
     }
 
     // Update record to SUCCEEDED and store JSON
@@ -121,16 +146,18 @@ export async function POST(req: NextRequest) {
         console.log(`[EXTRACT-RESUME] Debiting 100 credits from user ${session.user.id}`);
         await debitCreditsForResume(session.user.id, resume.id, 100);
       }
-    } catch (e: any) {
-      console.error("[EXTRACT-RESUME] Debit failed:", e?.message);
+    } catch (e: unknown) {
+      const message = typeof e === 'object' && e && 'message' in e ? String((e as Record<string, unknown>).message) : '';
+      console.error("[EXTRACT-RESUME] Debit failed:", message);
     }
 
     // Revalidate history page to show new upload immediately
     revalidatePath("/dashboard/history");
 
     return NextResponse.json({ resumeId: resume.id, resumeData });
-  } catch (e: any) {
-    console.error("[EXTRACT-RESUME] Error:", e?.message);
-    return NextResponse.json({ error: e?.message ?? "Unexpected error" }, { status: 500 });
+  } catch (e: unknown) {
+    const message = typeof e === 'object' && e && 'message' in e ? String((e as Record<string, unknown>).message) : 'Unexpected error';
+    console.error("[EXTRACT-RESUME] Error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { getStripe } from "@/lib/billing/stripe";
 import { errorEnvelope } from "@/lib/errors";
 
@@ -35,18 +36,30 @@ export async function POST(req: NextRequest) {
   });
 
   // Clear any scheduled downgrade flags BEFORE Stripe cancels to avoid webhook auto-creating Basic
-  const clearedMeta = { ...(user.metadata as any), downgradeScheduled: undefined, downgradeTarget: undefined } as any;
+  const prevMeta = (user.metadata ?? {}) as Record<string, unknown>;
+  const clearedMeta: Prisma.InputJsonValue = {
+    ...prevMeta,
+    downgradeScheduled: undefined,
+    downgradeTarget: undefined,
+  };
   try {
-    await prisma.user.update({ where: { id: user.id }, data: { metadata: clearedMeta as any } });
+    await prisma.user.update({ where: { id: user.id }, data: { metadata: clearedMeta } });
   } catch {}
 
   // Cancel Stripe subscription
   try {
     const stripe = getStripe();
-    await stripe.subscriptions.cancel(user.stripeSubscriptionId );
-  } catch (err: any) {
+    await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+  } catch (err: unknown) {
     // Swallow already canceled/sub missing and proceed
-    if (err?.raw?.code !== 'resource_missing' && err?.code !== 'resource_missing') {
+    let code: string | undefined;
+    if (typeof err === 'object' && err) {
+      const rec = err as Record<string, unknown>;
+      const raw = rec.raw as Record<string, unknown> | undefined;
+      if (raw && typeof raw["code"] === 'string') code = raw["code"] as string;
+      else if (typeof rec["code"] === 'string') code = rec["code"] as string;
+    }
+    if (code !== 'resource_missing') {
       return NextResponse.json(errorEnvelope("STRIPE_ERROR", "Failed to cancel Stripe subscription."), { status: 500 });
     }
   }
@@ -61,7 +74,7 @@ export async function POST(req: NextRequest) {
       stripeSubscriptionId: null,
       subscriptionStartDate: null,
       subscriptionEndDate: null,
-      metadata: clearedMeta as any,
+      metadata: clearedMeta,
     },
   });
 

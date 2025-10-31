@@ -1,5 +1,6 @@
 import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export type UserBillingSummary = {
   planType: "FREE" | "BASIC" | "PRO";
@@ -11,6 +12,10 @@ export type UserBillingSummary = {
   subscriptionStartDate?: Date | null;
   subscriptionEndDate?: Date | null;
 };
+
+interface UserMetadata {
+  downgradeScheduled?: boolean;
+}
 
 export async function getCurrentUserBilling(): Promise<UserBillingSummary | null> {
   const session = await getServerSession();
@@ -37,10 +42,10 @@ export async function getCurrentUserBilling(): Promise<UserBillingSummary | null
   // needsUpgrade: credits low BUT subscription still active (ask to upgrade to Pro for more credits)
   const needsUpgrade = isLowCredits && user.planType !== "FREE" && subscriptionActive && user.planType !== "PRO";
   
-  const meta = (user.metadata as any) || {};
-  const downgradeScheduled = !!meta.downgradeScheduled;
+  const meta = (user.metadata as Prisma.InputJsonValue) as UserMetadata | null;
+  const downgradeScheduled = !!meta?.downgradeScheduled;
   return { 
-    planType: user.planType as any, 
+    planType: user.planType, 
     credits: user.credits ?? 0, 
     isLowCredits, 
     needsRenewal, 

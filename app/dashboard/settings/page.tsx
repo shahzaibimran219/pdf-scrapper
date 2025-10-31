@@ -1,15 +1,11 @@
-import { getServerSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+ 
 import { getCurrentUserBilling } from "@/lib/billing/user";
 import BillingActions from "@/components/settings/BillingActions";
-import { redirect } from "next/navigation";
-import PlanCardGrid from "@/components/settings/PlanCardGrid";
-import { getStripe } from "@/lib/billing/stripe";
- 
-export default async function DashboardSettingsPage({ searchParams }: { searchParams: Promise<{ checkout?: string, session_id?: string }> }) {
+ import PlanCardGrid from "@/components/settings/PlanCardGrid";
+  
+export default async function DashboardSettingsPage() {
   const billing = await getCurrentUserBilling();
-  const params = await searchParams;
-
+ 
   // Show renewal/upgrade warnings if credits are low
   const isLowCredits = billing?.isLowCredits ?? false;
   const needsRenewal = billing?.needsRenewal ?? false;

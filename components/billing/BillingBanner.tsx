@@ -55,7 +55,7 @@ export default function BillingBanner() {
     return (
       <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
         <h3 className="text-sm font-medium text-orange-800 flex items-center gap-2"> <AlertCircle className="h-4 w-4 text-orange-500" /> Downgrade Scheduled</h3>
-        <p className="text-sm text-orange-700">Your plan is scheduled to change to Basic at the next renewal. You'll keep your remaining credits until then.</p>
+        <p className="text-sm text-orange-700">Your plan is scheduled to change to Basic at the next renewal. You&apos;ll keep your remaining credits until then.</p>
       </div>
     );
   }

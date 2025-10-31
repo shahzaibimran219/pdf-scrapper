@@ -1,20 +1,18 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export default function PaymentStatusBanner() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+   const searchParams = useSearchParams();
   const session_id = searchParams.get("session_id");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "fail">(session_id ? "loading" : "idle");
   const [showBadge, setShowBadge] = useState(false);
 
   useEffect(() => {
     if (session_id) {
-      setStatus("loading");
       fetch(`/api/billing/verify-session?session_id=${session_id}`)
         .then(res => res.json())
-        .then(data => {
+        .then((data: { success?: boolean }) => {
           setStatus(data.success ? "success" : "fail");
           setShowBadge(true);
           setTimeout(() => {

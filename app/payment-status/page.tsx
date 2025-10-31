@@ -12,13 +12,11 @@ function PaymentStatusInner() {
   const ivRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!session_id) {
-      setStatus("fail");
-      return;
-    }
+    if (!session_id) return;
+
     fetch(`/api/billing/verify-session?session_id=${session_id}`)
       .then(res => res.json())
-      .then(data => {
+      .then((data: { success?: boolean }) => {
         const ok = !!data.success;
         setStatus(ok ? "success" : "fail");
         if (ok) {

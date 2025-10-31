@@ -12,6 +12,7 @@ import { extractResumeWithOpenAI, extractResumeWithOpenAIVisionFromUrl, extractR
 import { prisma as prismaClient } from "@/lib/prisma";
 import { debitCreditsForResume } from "@/lib/credits";
 import { rasterizeFirstPageToPng, ocrPngWithTesseract } from "@/lib/ocr";
+import { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 
@@ -105,7 +106,8 @@ export async function POST(req: NextRequest) {
   const existing = await prisma.resume.findFirst({
     where: { userId: session.user.id, sourceHash: serverHash },
   });
-  if (existing?.resumeData && existing.schemaVersion === EXTRACT_CONFIG.SCHEMA_VERSION && (existing.resumeData as any)?.profile) {
+  const resumeDataObj = existing?.resumeData as Record<string, unknown> | null | undefined;
+  if (existing?.resumeData && existing.schemaVersion === EXTRACT_CONFIG.SCHEMA_VERSION && resumeDataObj?.profile) {
     return NextResponse.json({ resumeId: existing.id, resumeData: existing.resumeData });
   }
 
@@ -129,22 +131,25 @@ export async function POST(req: NextRequest) {
 
   // Minimal Sync Pipeline: extract text with pdf-parse, classify pages by text length
   // OpenAI direct PDF extraction
-  let resumeData: any;
+  let resumeData: Prisma.InputJsonValue;
   try {
-    resumeData = await extractResumeWithOpenAI(bytes, storagePath.split("/").pop() ?? "uploaded.pdf");
-  } catch (e: any) {
+    const extracted = await extractResumeWithOpenAI(bytes, storagePath.split("/").pop() ?? "uploaded.pdf");
+    resumeData = extracted as Prisma.InputJsonValue;
+  } catch (e: unknown) {
+    const message = typeof e === 'object' && e && 'message' in e ? String((e as Record<string, unknown>).message) : 'openai failed';
     await prisma.resume.update({
       where: { id: resume.id },
-      data: { lastProcessStatus: "FAILED", lastError: e?.message ?? "openai failed" },
+      data: { lastProcessStatus: "FAILED", lastError: message },
     });
-    return NextResponse.json(errorEnvelope("OPENAI_ERROR", e?.message ?? "Failed to extract with OpenAI"), { status: 500 });
+    return NextResponse.json(errorEnvelope("OPENAI_ERROR", message ?? "Failed to extract with OpenAI"), { status: 500 });
   }
 
   // Fallback for image-only PDFs: if low signal, try Vision on rendered PNG; then OCR if still low
   let tempPngPath: string | null = null;
   try {
-    const keys = Object.keys(resumeData || {});
-    const lowSignal = !resumeData || keys.length < 3 || (!resumeData.profile && (!resumeData.experience && !resumeData.workExperiences));
+    const resumeObj = resumeData as Record<string, unknown> | null | undefined;
+    const keys = resumeObj ? Object.keys(resumeObj) : [];
+    const lowSignal = !resumeObj || keys.length < 3 || (!resumeObj.profile && (!resumeObj.experience && !resumeObj.workExperiences));
     console.log(`[EXTRACT] Low-signal check: keys=${keys.length}, lowSignal=${lowSignal}`);
     if (lowSignal) {
       console.log(`[EXTRACT] Rasterizing first page to PNG for Vision/OCR fallback…`);
@@ -153,19 +158,19 @@ export async function POST(req: NextRequest) {
         console.warn(`[EXTRACT] Rasterization returned null; skipping Vision/OCR fallback.`);
       } else {
         // Upload PNG temporarily
-        const baseName = (storagePath.split("/").pop() ?? "uploaded").replace(/\.pdf$/i, "");
         tempPngPath = storagePath.replace(/\.pdf$/i, "") + "-p1.png";
         console.log(`[EXTRACT] Uploading temporary PNG: ${tempPngPath}`);
-        await supabase.storage.from(bucket).upload(tempPngPath, new Blob([png] as any, { type: "image/png" }), { upsert: true, contentType: "image/png" } as any);
+        const blob = new Blob([Uint8Array.from(png)], { type: "image/png" });
+        await supabase.storage.from(bucket).upload(tempPngPath, blob, { upsert: true, contentType: "image/png" });
         const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(tempPngPath, 60 * 5);
-        if (signed?.signedUrl) {
+          if (signed?.signedUrl) {
           console.log(`[EXTRACT] Vision fallback attempting with signed image URL`);
           const visionJson = await extractResumeWithOpenAIVisionFromUrl(signed.signedUrl);
           const vKeys = Object.keys(visionJson || {});
           console.log(`[EXTRACT] Vision result keys=${vKeys.length}`);
           if (vKeys.length > keys.length) {
             console.log(`[EXTRACT] Vision improved result; adopting Vision JSON.`);
-            resumeData = visionJson;
+            resumeData = visionJson as Prisma.InputJsonValue;
           } else {
             console.log(`[EXTRACT] Vision did not improve; attempting OCR with Tesseract…`);
             const ocrText = await ocrPngWithTesseract(png);
@@ -176,7 +181,7 @@ export async function POST(req: NextRequest) {
               console.log(`[EXTRACT] OCR→JSON keys=${oKeys.length}`);
               if (oKeys.length > keys.length) {
                 console.log(`[EXTRACT] OCR→JSON improved result; adopting.`);
-                resumeData = ocrJson;
+                resumeData = ocrJson as Prisma.InputJsonValue;
               } else {
                 console.log(`[EXTRACT] OCR→JSON not better than initial; keeping initial JSON.`);
               }
@@ -190,7 +195,8 @@ export async function POST(req: NextRequest) {
       }
     }
   } catch (e) {
-    console.warn("[EXTRACT] vision/ocr fallback failed:", (e as any)?.message);
+    const message = typeof e === 'object' && e && 'message' in e ? String((e as Record<string, unknown>).message) : String(e);
+    console.warn("[EXTRACT] vision/ocr fallback failed:", message);
   } finally {
     // Best-effort delete temp png
     if (tempPngPath) {
@@ -216,8 +222,9 @@ export async function POST(req: NextRequest) {
       await debitCreditsForResume(session.user.id, resume.id, 100);
       console.log(`[EXTRACT] Successfully debited credits for user ${session.user.id}`);
     }
-  } catch (err: any) {
-    console.error(`[EXTRACT] Failed to debit credits for user ${session.user.id}:`, err.message);
+  } catch (err: unknown) {
+    const message = typeof err === 'object' && err && 'message' in err ? String((err as Record<string, unknown>).message) : '';
+    console.error(`[EXTRACT] Failed to debit credits for user ${session.user.id}:`, message);
   }
 
   await prisma.resumeHistory.create({
