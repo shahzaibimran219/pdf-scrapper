@@ -89,6 +89,8 @@ export default function ResumeUploader() {
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
       toast.success("Extraction complete");
+      // Refresh router cache to ensure history page shows new upload
+      router.refresh();
       if (json?.resumeId) router.push(`/resumes/${json.resumeId}`);
     } catch (err: any) {
       setError(err?.message ?? "Failed to extract resume");

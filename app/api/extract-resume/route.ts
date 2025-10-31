@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getOpenAI } from "@/lib/openai";
 import { RESUME_JSON_SCHEMA } from "@/lib/schema/resume-json-schema";
 import { getServerSession } from "@/lib/auth";
@@ -123,6 +124,9 @@ export async function POST(req: NextRequest) {
     } catch (e: any) {
       console.error("[EXTRACT-RESUME] Debit failed:", e?.message);
     }
+
+    // Revalidate history page to show new upload immediately
+    revalidatePath("/dashboard/history");
 
     return NextResponse.json({ resumeId: resume.id, resumeData });
   } catch (e: any) {

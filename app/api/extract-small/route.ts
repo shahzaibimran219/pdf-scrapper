@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "@/lib/auth";
 import { errorEnvelope } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
@@ -110,6 +111,9 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error(`[EXTRACT-SMALL] Failed to debit credits for user ${session.user.id}:`, err.message);
   }
+
+  // Revalidate history page to show new upload immediately
+  revalidatePath("/dashboard/history");
 
   return NextResponse.json({ resumeId: resume.id, resumeData });
 }
