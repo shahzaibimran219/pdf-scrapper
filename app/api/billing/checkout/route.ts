@@ -4,6 +4,7 @@ import { errorEnvelope } from "@/lib/errors";
 import { getStripe } from "@/lib/billing/stripe";
 import { getCancelUrl, getSuccessUrl, isBillingEnabled } from "@/lib/billing/env";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     select: { id: true, email: true, name: true, stripeCustomerId: true, stripeSubscriptionId: true, planType: true, credits: true, metadata: true },
   });
   const emailFromSession = session.user.email ?? undefined;
-  let dbUser = existingById ?? (emailFromSession
+  const dbUser = existingById ?? (emailFromSession
     ? await prisma.user.upsert({
         where: { email: emailFromSession },
         update: {},
@@ -64,10 +65,10 @@ export async function POST(req: NextRequest) {
           where: { id: dbUser.id },
           data: {
             metadata: {
-              ...((dbUser.metadata as any) || {}),
+              ...((dbUser.metadata ?? {}) as Record<string, unknown>),
               upgradingFromSubscription: dbUser.stripeSubscriptionId,
               upgradeCheckoutPending: true,
-            } as any,
+            } as Prisma.InputJsonValue,
           }
         });
         
@@ -88,8 +89,7 @@ export async function POST(req: NextRequest) {
   if (customerId) {
     try {
       const c = await stripe.customers.retrieve(customerId);
-      // @ts-ignore: deleted flag may exist
-      if ((c as any).deleted) customerId = null;
+      if ('deleted' in c && c.deleted) customerId = null;
     } catch {
       customerId = null;
     }
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
             lastCheckoutPlan: body.plan,
             lastCheckoutCredits: body.credits,
             lastCheckoutTimestamp: new Date().toISOString(),
-          } as any,
+          } as Prisma.InputJsonValue,
         },
       });
 
@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
         lastCheckoutPlan: body.plan,
         lastCheckoutCredits: body.credits,
         lastCheckoutTimestamp: new Date().toISOString(),
-      } as any,
+      } as Prisma.InputJsonValue,
     },
   });
 

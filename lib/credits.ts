@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function grantCredits(userId: string, amount: number, meta?: unknown) {
   console.log(`[CREDITS] Granting ${amount} credits to user ${userId}`, { meta });
@@ -12,11 +13,12 @@ export async function grantCredits(userId: string, amount: number, meta?: unknow
     // Create credit ledger entry with error handling for idempotency
     try {
       await tx.creditLedger.create({
-        data: { userId, delta: amount, reason: "SUBSCRIPTION_GRANT", resumeId: null, meta: meta as any },
+        data: { userId, delta: amount, reason: "SUBSCRIPTION_GRANT", resumeId: null, meta: meta as Prisma.InputJsonValue },
       });
       console.log(`[CREDITS] Credit ledger entry created for user ${userId}`);
-    } catch (e: any) {
-      if (e?.code === 'P2002') {
+    } catch (e: unknown) {
+      const code = (typeof e === 'object' && e && 'code' in e) ? String((e as Record<string, unknown>).code) : undefined;
+      if (code === 'P2002') {
         console.log(`[CREDITS] Credit ledger entry already exists for user ${userId}, skipping`);
       } else {
         console.error(`[CREDITS] Failed to create credit ledger entry for user ${userId}:`, e);

@@ -5,6 +5,17 @@ import { ExportCopyButtons } from "@/components/resumes/ExportCopyButtons";
 import { ArrowLeft, FileX, AlertTriangle } from "lucide-react";
 import { CollapsibleJson } from "@/components/json/CollapsibleJson";
 import { calculateMissingDataPercentage } from "@/lib/resume-utils";
+import type {
+  Profile,
+  WorkExperience,
+  Education,
+  License,
+  Language,
+  Achievement,
+  Publication,
+  Honor,
+  ResumeData,
+} from "@/types/resume";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -32,16 +43,16 @@ export default async function ResumeDetailPage({ params }: Props) {
       </div>
     );
   }
-  const data: any = resume.resumeData ?? {};
-  const profile: any = data?.profile ?? {};
-  const workExperiences: any[] = Array.isArray(data?.workExperiences) ? data.workExperiences : [];
-  const educations: any[] = Array.isArray(data?.educations) ? data.educations : [];
+  const data = (resume.resumeData ?? {}) as ResumeData;
+  const profile: Profile = data?.profile ?? {};
+  const workExperiences: WorkExperience[] = Array.isArray(data?.workExperiences) ? data.workExperiences : [];
+  const educations: Education[] = Array.isArray(data?.educations) ? data.educations : [];
   const skills: string[] = Array.isArray(data?.skills) ? data.skills : [];
-  const licenses: any[] = Array.isArray(data?.licenses) ? data.licenses : [];
-  const languages: any[] = Array.isArray(data?.languages) ? data.languages : [];
-  const achievements: any[] = Array.isArray(data?.achievements) ? data.achievements : [];
-  const publications: any[] = Array.isArray(data?.publications) ? data.publications : [];
-  const honors: any[] = Array.isArray(data?.honors) ? data.honors : [];
+  const licenses: License[] = Array.isArray(data?.licenses) ? data.licenses : [];
+  const languages: Language[] = Array.isArray(data?.languages) ? data.languages : [];
+  const achievements: Achievement[] = Array.isArray(data?.achievements) ? data.achievements : [];
+  const publications: Publication[] = Array.isArray(data?.publications) ? data.publications : [];
+  const honors: Honor[] = Array.isArray(data?.honors) ? data.honors : [];
 
   return (
     <div className="container py-8">
@@ -75,10 +86,10 @@ export default async function ResumeDetailPage({ params }: Props) {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <h3 className="text-sm font-medium text-amber-800">Didn't find much data, are you sure you uploaded a resume?</h3>
+                  <h3 className="text-sm font-medium text-amber-800">Didn&apos;t find much data, are you sure you uploaded a resume?</h3>
                   <p className="text-sm text-amber-700 mt-1">
                     We were only able to extract {100 - missingPercentage}% of the expected resume information. 
-                    This might happen if the PDF contains mostly images, scanned documents with poor quality, or isn't actually a resume.
+                    This might happen if the PDF contains mostly images, scanned documents with poor quality, or isn&apos;t actually a resume.
                   </p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     {resume.storagePath ? (

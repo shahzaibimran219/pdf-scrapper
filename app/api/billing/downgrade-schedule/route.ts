@@ -3,8 +3,10 @@ import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { errorEnvelope } from "@/lib/errors";
 import { getStripe } from "@/lib/billing/stripe";
+import { Prisma } from "@prisma/client";
 
-export async function POST(req: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function POST(_req: NextRequest) {
   const session = await getServerSession();
   if (!session?.user?.id) return NextResponse.json(errorEnvelope("UNAUTHORIZED", "Auth required"), { status: 401 });
 
@@ -22,16 +24,17 @@ export async function POST(req: NextRequest) {
       metadata: { downgrade_to: "Basic" },
       proration_behavior: "none",
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const message = typeof e === 'object' && e && 'message' in e ? String((e as Record<string, unknown>).message) : 'Failed to schedule downgrade';
     console.error("[downgrade-schedule] stripe update error", e);
-    return NextResponse.json(errorEnvelope("STRIPE_SUB_UPDATE", e?.message ?? "Failed to schedule downgrade"), { status: 500 });
+    return NextResponse.json(errorEnvelope("STRIPE_SUB_UPDATE", message), { status: 500 });
   }
 
   // Persist a simple flag for UI and webhook follow-up
-  const meta = (user.metadata as any) || {};
+  const meta = ((user.metadata as Prisma.InputJsonValue) ?? {}) as Record<string, unknown>;
   meta.downgradeScheduled = true;
   meta.downgradeTarget = "BASIC";
-  await prisma.user.update({ where: { id: user.id }, data: { metadata: meta as any } });
+  await prisma.user.update({ where: { id: user.id }, data: { metadata: meta as Prisma.InputJsonValue } });
 
   return NextResponse.json({ ok: true });
 }

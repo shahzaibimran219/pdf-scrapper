@@ -4,6 +4,8 @@ import { getServerSession } from "@/lib/auth";
 import HistoryFilters from "@/components/history/HistoryFilters";
 import Pagination from "@/components/history/Pagination";
 import { Suspense } from "react";
+import type { ResumeListItem } from "@/types/resume";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -17,10 +19,12 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   const status = sp?.status?.toString()?.trim().toUpperCase();
   const page = Math.max(1, parseInt(sp?.page?.toString() ?? "1", 10));
 
-  const where: any = session?.user?.id ? { userId: session.user.id } : undefined;
+  const where: Prisma.ResumeWhereInput | undefined = session?.user?.id ? { userId: session.user.id } : undefined;
   if (where) {
     if (q) where.fileName = { contains: q, mode: "insensitive" };
-    if (["PENDING", "SUCCEEDED", "FAILED"].includes(status ?? "")) where.lastProcessStatus = status;
+    if (status === "PENDING" || status === "SUCCEEDED" || status === "FAILED") {
+      where.lastProcessStatus = status as "PENDING" | "SUCCEEDED" | "FAILED";
+    }
   }
 
   const [resumes, total] = where
@@ -34,7 +38,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
         }),
         prisma.resume.count({ where }),
       ])
-    : [[], 0];
+    : [[], 0] as [ResumeListItem[], number];
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
@@ -61,7 +65,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
             </tr>
           </thead>
           <tbody className="divide-y">
-            {resumes.map((r: any) => (
+            {resumes.map((r) => (
               <tr key={r.id} className="hover:bg-[hsl(var(--muted))]/50 transition-colors">
                 <td className="py-3 pl-5 pr-4">
                   <a href={`/resumes/${r.id}`} className="font-medium hover:underline">{r.fileName}</a>

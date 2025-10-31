@@ -5,6 +5,26 @@ import { UploadCloud, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useBillingStore } from "@/lib/state/billing";
 
+interface PdfjsViewport {
+  width: number;
+  height: number;
+}
+
+interface PdfjsPageProxy {
+  getViewport(options: { scale: number }): PdfjsViewport;
+  render(params: { canvasContext: CanvasRenderingContext2D; viewport: PdfjsViewport }): { promise: Promise<void> };
+}
+
+interface PdfjsDocumentProxy {
+  numPages: number;
+  getPage(pageNumber: number): Promise<PdfjsPageProxy>;
+}
+
+interface PdfjsModuleClient {
+  GlobalWorkerOptions?: { workerSrc?: string };
+  getDocument(options: { data: ArrayBuffer | Uint8Array }): { promise: Promise<PdfjsDocumentProxy> };
+}
+
 export default function ResumeUploader() {
   const router = useRouter();
   const credits = useBillingStore((s) => s.credits);
@@ -59,11 +79,13 @@ export default function ResumeUploader() {
     setLoading(true);
     setStage("render");
     try {
-      const pdfjsLib = await import("pdfjs-dist");
-      (pdfjsLib as any).GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
+      const pdfjsLib = await import("pdfjs-dist") as unknown as PdfjsModuleClient;
+      if (pdfjsLib.GlobalWorkerOptions) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
+      }
 
       const ab = await file.arrayBuffer();
-      const pdf = await (pdfjsLib as any).getDocument({ data: ab }).promise;
+      const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
       const images: string[] = [];
 
       const maxPages = Math.min(pdf.numPages, 3);
@@ -71,10 +93,11 @@ export default function ResumeUploader() {
         const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 2 });
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d")!;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas 2D context not available");
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx as any, viewport }).promise;
+        await page.render({ canvasContext: ctx, viewport }).promise;
         images.push(canvas.toDataURL("image/png"));
       }
 
@@ -87,13 +110,14 @@ export default function ResumeUploader() {
 
       setStage("parse");
       if (!res.ok) throw new Error(await res.text());
-      const json = await res.json();
+      const json = await res.json() as { resumeId?: string };
       toast.success("Extraction complete");
       // Refresh router cache to ensure history page shows new upload
       router.refresh();
       if (json?.resumeId) router.push(`/resumes/${json.resumeId}`);
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to extract resume");
+    } catch (err: unknown) {
+      const message = typeof err === 'object' && err && 'message' in err ? String((err as Record<string, unknown>).message) : 'Failed to extract resume';
+      setError(message);
     } finally {
       setLoading(false);
       setStage("idle");

@@ -38,7 +38,7 @@ export default function PlanCard({ plan, billing }: { plan: Plan; billing: Billi
         alert("Checkout failed");
         return;
       }
-      const data = await res.json();
+      const data = await res.json() as { sessionUrl?: string; upgraded?: boolean };
       if (data?.sessionUrl) {
         window.location.href = data.sessionUrl;
       } else if (data?.upgraded) {

@@ -48,8 +48,7 @@ export async function POST(req: NextRequest) {
   const supabase = createClient(supabaseUrl, serviceRole);
 
   const objectKey = `${session.user.id}/${crypto.randomUUID()}.pdf`;
-  const path = `${bucket}/${objectKey}`;
-
+ 
   const { data, error } = await supabase.storage
     .from(bucket)
     // createSignedUploadUrl returns a URL for a single-use upload

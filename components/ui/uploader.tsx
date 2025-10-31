@@ -1,8 +1,6 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
-import { supabaseClient } from "@/lib/supabase-client";
-import { Loader2 } from "lucide-react";
 import { useBillingStore } from "@/lib/state/billing";
 import { UploadCloud } from "lucide-react";
 
@@ -23,16 +21,10 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
   };
   const [fileName, setFileName] = useState<string>("");
   const [fileSize, setFileSize] = useState<number>(0);
-  const [stage, setStage] = useState<
-    | "idle"
-    | "uploading"
-    | "uploadComplete"
-    | "hashing"
-    | "extracting"
-    | "saving"
-    | "redirecting"
-  >("idle");
-  const setStageSafe = (next: typeof stage) => setStage((cur) => (cur === next ? cur : next));
+  type StageType = "idle" | "uploading" | "uploadComplete" | "hashing" | "extracting" | "saving" | "redirecting";
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [stage, setStage] = useState<StageType>("idle");
+  const setStageSafe = useCallback((next: StageType) => setStage((cur) => (cur === next ? cur : next)), []);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const onFile = useCallback(async (file: File) => {
@@ -84,17 +76,17 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
             if (xhr.readyState === 4) {
               if (xhr.status >= 200 && xhr.status < 300) {
                 try {
-                  const data = JSON.parse(xhr.responseText || "{}");
+                  const data = JSON.parse(xhr.responseText || "{}") as { resumeId?: string };
                   toast.success("Extraction complete");
                   setStageSafe("redirecting");
                   window.location.href = `/resumes/${data.resumeId}`;
                   resolve();
-                } catch (e) {
+                } catch {
                   reject(new Error("Failed to parse response"));
                 }
               } else {
                 try {
-                  const err = JSON.parse(xhr.responseText || "{}");
+                  const err = JSON.parse(xhr.responseText || "{}") as { message?: string };
                   reject(new Error(err?.message ?? "Extraction failed"));
                 } catch {
                   reject(new Error("Extraction failed"));
@@ -114,10 +106,10 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
         body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
+        const err = await res.json().catch(() => ({})) as { message?: string };
         throw new Error(err?.message ?? "Failed to get upload URL");
       }
-      const { signedUrl, token, storagePath } = await res.json();
+      const { signedUrl, token, storagePath } = await res.json() as { signedUrl: string; token: string; storagePath: string };
 
       // Use Supabase client helper to upload to signed URL
       // Large path: upload to Supabase signed URL with progress via XHR
@@ -158,7 +150,7 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
         body: JSON.stringify({ storagePath, sourceHash: hex, mode: "sync" }),
       });
       if (!extract.ok) {
-        const e = await extract.json().catch(() => ({}));
+        const e = await extract.json().catch(() => ({})) as { code?: string; message?: string };
         if (e?.code === "INSUFFICIENT_CREDITS") {
           toast.error("Insufficient credits! You need at least 100 credits to scrape a PDF. Please upgrade your plan.", {
             duration: 5000,
@@ -171,19 +163,20 @@ export function Uploader({ maxBytes = 10 * 1024 * 1024 }: Props) {
           toast.error(e?.message ?? "Extraction failed");
         }
       } else {
-        const data = await extract.json();
+        const data = await extract.json() as { resumeId?: string };
         toast.success("Extraction complete");
         setStageSafe("redirecting");
         window.location.href = `/resumes/${data.resumeId}`;
       }
-    } catch (e: any) {
-      toast.error(e?.message ?? "Upload failed");
+    } catch (e: unknown) {
+      const message = typeof e === 'object' && e && 'message' in e ? String((e as Record<string, unknown>).message) : 'Upload failed';
+      toast.error(message);
     } finally {
       setIsUploading(false);
       setProgressDom(0);
       setStageSafe("idle");
     }
-  }, [maxBytes]);
+  }, [maxBytes, setStageSafe]);
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
